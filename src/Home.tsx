@@ -14,5 +14,5 @@ export default function Home() {
         onSuccess: refetch,
     });
 
-    return <div></div>;
+    return <div>Hello</div>;
 }

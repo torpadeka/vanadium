@@ -1,46 +1,43 @@
-/// <reference types="vitest" />
-import react from '@vitejs/plugin-react';
-import dotenv from 'dotenv';
-import { defineConfig } from 'vite';
-import environment from 'vite-plugin-environment';
+import react from "@vitejs/plugin-react";
+import dotenv from "dotenv";
+import { defineConfig } from "vite";
+import environment from "vite-plugin-environment";
+import forwardTrailingSlash from "./forward-trailing-slash";
 import path from "path"
 import tailwindcss from "@tailwindcss/vite"
 
 dotenv.config();
 
 export default defineConfig({
-  root: 'src',
-  build: {
-    outDir: '../dist',
-    emptyOutDir: true,
-  },
-  optimizeDeps: {
-    esbuildOptions: {
-      define: {
-        global: 'globalThis',
-      },
+    root: "src",
+    build: {
+        outDir: "../dist",
+        emptyOutDir: true,
     },
-  },
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:4943',
-        changeOrigin: true,
-      },
+    optimizeDeps: {
+        esbuildOptions: {
+            define: {
+                global: "globalThis",
+            },
+        },
     },
-  },
-  plugins: [
-    react(),
-    environment('all', { prefix: 'CANISTER_' }),
-    environment('all', { prefix: 'DFX_' }),
-    tailwindcss()
-  ],
-  cacheDir: '../node_modules/.vite',
-  test: {
-    environment: 'jsdom',
-    setupFiles: 'setupTests.ts',
-  },
-  resolve: {
+    server: {
+        proxy: {
+            "/api": {
+                target: "http://127.0.0.1:4943",
+                changeOrigin: true,
+            },
+        },
+    },
+    plugins: [
+        react(),
+        environment("all", { prefix: "CANISTER_" }),
+        environment("all", { prefix: "DFX_" }),
+        tailwindcss(),
+        forwardTrailingSlash(),
+    ],
+    cacheDir: "../node_modules/.vite",
+    resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },

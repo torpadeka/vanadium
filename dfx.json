@@ -2,7 +2,8 @@
   "canisters": {
     "backend": {
       "type": "motoko",
-      "main": "backend/Backend.mo",
+      "main": "backend/Main.mo",
+      "args": "--enhanced-orthogonal-persistence",
       "declarations": {
         "node_compatibility": true
       }
@@ -10,7 +11,21 @@
     "frontend": {
       "dependencies": ["backend"],
       "type": "assets",
-      "source": ["dist/"]
+      "frontend": {
+        "entrypoint": "frontend/index.html"
+      },
+      "source": ["frontend/dist"]
+    },
+    "internet_identity": {
+      "candid": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity.did",
+      "type": "custom",
+      "specified_id": "rdmx6-jaaaa-aaaaa-aaadq-cai",
+      "remote": {
+        "id": {
+          "ic": "rdmx6-jaaaa-aaaaa-aaadq-cai"
+        }
+      },
+      "wasm": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity_dev.wasm.gz"
     }
   },
   "defaults": {

@@ -17,6 +17,8 @@
     "postinstall": "mops install"
   },
   "dependencies": {
+    "@dfinity/agent": "^2.4.1",
+    "@dfinity/auth-client": "^2.4.1",
     "@ic-reactor/react": "^1.14.6",
     "@monaco-editor/react": "^4.7.0",
     "@radix-ui/react-slot": "^1.2.3",

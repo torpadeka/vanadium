@@ -1,18 +1,35 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router';
-import { Zap, Code, Shield, Sparkles, ArrowRight, Play, Database, Layers } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState } from "react";
+import { Link } from "react-router";
+import {
+  Zap,
+  Code,
+  Shield,
+  Sparkles,
+  ArrowRight,
+  Play,
+  Database,
+  Layers,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useUser } from "@/context/AuthContext";
+import { Console } from "console";
 
-type Tab = 'home' | 'features' | 'pricing' | 'about' | 'login' | 'register';
+type Tab = "home" | "features" | "pricing" | "about" | "login" | "logout";
 
 const LandingPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<Tab>('home');
+  const [activeTab, setActiveTab] = useState<Tab>("home");
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'features':
+      case "features":
         return (
           <div className="max-w-6xl mx-auto px-6 py-20">
             <h2 className="text-4xl font-bold text-center mb-16">
@@ -52,8 +69,8 @@ const LandingPage: React.FC = () => {
             </div>
           </div>
         );
-      
-      case 'pricing':
+
+      case "pricing":
         return (
           <div className="max-w-4xl mx-auto px-6 py-20">
             <h2 className="text-4xl font-bold text-center mb-16">
@@ -68,7 +85,7 @@ const LandingPage: React.FC = () => {
                   "5 projects per month",
                   "Basic AI assistance",
                   "Standard templates",
-                  "Community support"
+                  "Community support",
                 ]}
                 buttonText="Get Started"
                 popular={false}
@@ -83,7 +100,7 @@ const LandingPage: React.FC = () => {
                   "Premium templates",
                   "Priority support",
                   "Team collaboration",
-                  "Advanced security features"
+                  "Advanced security features",
                 ]}
                 buttonText="Start Free Trial"
                 popular={true}
@@ -91,11 +108,13 @@ const LandingPage: React.FC = () => {
             </div>
           </div>
         );
-      
-      case 'about':
+
+      case "about":
         return (
           <div className="max-w-4xl mx-auto px-6 py-20">
-            <h2 className="text-4xl font-bold text-center mb-16">About vanadium</h2>
+            <h2 className="text-4xl font-bold text-center mb-16">
+              About vanadium
+            </h2>
             <div className="prose prose-invert max-w-none">
               <Card className="mb-8">
                 <CardHeader>
@@ -103,8 +122,10 @@ const LandingPage: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-300 leading-relaxed">
-                    vanadium revolutionizes web development by combining the power of AI with blockchain technology. 
-                    We believe that creating beautiful, functional React applications should be as simple as describing what you want to build.
+                    vanadium revolutionizes web development by combining the
+                    power of AI with blockchain technology. We believe that
+                    creating beautiful, functional React applications should be
+                    as simple as describing what you want to build.
                   </p>
                 </CardContent>
               </Card>
@@ -114,91 +135,62 @@ const LandingPage: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-300 leading-relaxed mb-4">
-                    Built on cutting-edge technologies to ensure security, performance, and scalability:
+                    Built on cutting-edge technologies to ensure security,
+                    performance, and scalability:
                   </p>
                   <ul className="text-gray-300 space-y-2">
-                    <li>• <strong>Frontend:</strong> Vite + React + TypeScript + Tailwind CSS</li>
-                    <li>• <strong>Backend:</strong> Internet Computer Protocol (ICP) + Motoko</li>
-                    <li>• <strong>AI Engine:</strong> Advanced language models optimized for code generation</li>
-                    <li>• <strong>Security:</strong> Blockchain-based authentication and data storage</li>
+                    <li>
+                      • <strong>Frontend:</strong> Vite + React + TypeScript +
+                      Tailwind CSS
+                    </li>
+                    <li>
+                      • <strong>Backend:</strong> Internet Computer Protocol
+                      (ICP) + Motoko
+                    </li>
+                    <li>
+                      • <strong>AI Engine:</strong> Advanced language models
+                      optimized for code generation
+                    </li>
+                    <li>
+                      • <strong>Security:</strong> Blockchain-based
+                      authentication and data storage
+                    </li>
                   </ul>
                 </CardContent>
               </Card>
             </div>
           </div>
         );
-      
-      case 'login':
+
+      case "login":
+        const { login, isAuthenticated } = useUser();
         return (
-          <div className="max-w-md mx-auto px-6 py-20">
-            <Card className="shadow-glow">
-              <CardHeader>
-                <CardTitle className="text-3xl text-center">Welcome Back</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Email</label>
-                    <Input
-                      type="email"
-                      placeholder="Enter your email"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Password</label>
-                    <Input
-                      type="password"
-                      placeholder="Enter your password"
-                    />
-                  </div>
-                  <Button type="submit" className="w-full">
-                    Sign In
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
+          <div className="">
+            {!isAuthenticated && (
+              <button
+                onClick={login}
+                className="flex items-center px-6 py-3 rounded-lg text-lg font-medium bg-blue-500 text-white hover:bg-blue-600 transition-all duration-200 shadow-lg"
+              >
+                <svg
+                  className="w-5 h-5 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M11 16l-4-4m0 0l4-4m-4 4h14"
+                  />
+                </svg>
+                Get Started with Internet Identity
+              </button>
+            )}
           </div>
         );
-      
-      case 'register':
-        return (
-          <div className="max-w-md mx-auto px-6 py-20">
-            <Card className="shadow-glow">
-              <CardHeader>
-                <CardTitle className="text-3xl text-center">Create Account</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Full Name</label>
-                    <Input
-                      type="text"
-                      placeholder="Enter your name"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Email</label>
-                    <Input
-                      type="email"
-                      placeholder="Enter your email"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Password</label>
-                    <Input
-                      type="password"
-                      placeholder="Create a password"
-                    />
-                  </div>
-                  <Button type="submit" className="w-full">
-                    Create Account
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </div>
-        );
-      
+
       default:
         return (
           <div className="relative">
@@ -209,8 +201,9 @@ const LandingPage: React.FC = () => {
                   vanadium
                 </h1>
                 <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
-                  Create stunning React applications with the power of AI. 
-                  Built on blockchain technology for enhanced security and decentralization.
+                  Create stunning React applications with the power of AI. Built
+                  on blockchain technology for enhanced security and
+                  decentralization.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Button asChild size="lg" className="group">
@@ -253,7 +246,13 @@ const LandingPage: React.FC = () => {
         );
     }
   };
-
+  const { username } = useUser();
+  const logoutAction = () => {
+    const { logout } = useUser();
+    console.log("Logging out user:", username);
+    logout();
+    setActiveTab("login");
+  };
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Navigation */}
@@ -269,34 +268,31 @@ const LandingPage: React.FC = () => {
             <div className="hidden md:flex items-center space-x-8">
               <NavItem
                 label="Home"
-                active={activeTab === 'home'}
-                onClick={() => setActiveTab('home')}
+                active={activeTab === "home"}
+                onClick={() => setActiveTab("home")}
               />
               <NavItem
                 label="Features"
-                active={activeTab === 'features'}
-                onClick={() => setActiveTab('features')}
+                active={activeTab === "features"}
+                onClick={() => setActiveTab("features")}
               />
               <NavItem
                 label="Pricing"
-                active={activeTab === 'pricing'}
-                onClick={() => setActiveTab('pricing')}
+                active={activeTab === "pricing"}
+                onClick={() => setActiveTab("pricing")}
               />
               <NavItem
                 label="About"
-                active={activeTab === 'about'}
-                onClick={() => setActiveTab('about')}
+                active={activeTab === "about"}
+                onClick={() => setActiveTab("about")}
               />
               <NavItem
                 label="Login"
-                active={activeTab === 'login'}
-                onClick={() => setActiveTab('login')}
+                active={activeTab === "login"}
+                onClick={() => setActiveTab("login")}
               />
-              <Button
-                onClick={() => setActiveTab('register')}
-                size="sm"
-              >
-                Register
+              <Button onClick={() => logoutAction()} size="sm">
+                Logout
               </Button>
             </div>
           </div>
@@ -326,9 +322,7 @@ const NavItem: React.FC<NavItemProps> = ({ label, active, onClick }) => (
   <button
     onClick={onClick}
     className={`font-medium transition-colors ${
-      active
-        ? 'text-purple-glow'
-        : 'text-gray-300 hover:text-white'
+      active ? "text-purple-glow" : "text-gray-300 hover:text-white"
     }`}
   >
     {label}
@@ -341,14 +335,20 @@ interface FeatureCardProps {
   description: string;
 }
 
-const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, description }) => (
+const FeatureCard: React.FC<FeatureCardProps> = ({
+  icon,
+  title,
+  description,
+}) => (
   <Card>
     <CardHeader>
       <div className="text-purple-glow mb-4">{icon}</div>
       <CardTitle className="text-xl">{title}</CardTitle>
     </CardHeader>
     <CardContent>
-      <CardDescription className="leading-relaxed">{description}</CardDescription>
+      <CardDescription className="leading-relaxed">
+        {description}
+      </CardDescription>
     </CardContent>
   </Card>
 );
@@ -370,7 +370,7 @@ const PricingCard: React.FC<PricingCardProps> = ({
   buttonText,
   popular,
 }) => (
-  <Card className={popular ? 'border-purple-glow shadow-glow' : ''}>
+  <Card className={popular ? "border-purple-glow shadow-glow" : ""}>
     <CardHeader>
       {popular && (
         <div className="bg-purple-glow text-white text-sm font-semibold px-3 py-1 rounded-full inline-block mb-4 w-fit">
@@ -392,10 +392,7 @@ const PricingCard: React.FC<PricingCardProps> = ({
           </li>
         ))}
       </ul>
-      <Button 
-        className="w-full" 
-        variant={popular ? "default" : "outline"}
-      >
+      <Button className="w-full" variant={popular ? "default" : "outline"}>
         {buttonText}
       </Button>
     </CardContent>

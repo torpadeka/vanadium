@@ -10,10 +10,10 @@ module {
   public type Folder = Types.Folder;
 
   public type UserService = actor {
-    createUser : shared (username : Text, email : Text) -> async Result.Result<User, Text>;
-    getUser : shared (id : Nat32) -> async Result.Result<?User, Text>;
-    updateUser : shared (id : Nat32, username : ?Text, email : ?Text) -> async Result.Result<User, Text>;
-    deleteUser : shared (id : Nat32) -> async Result.Result<(), Text>;
+    createUser : (username : Text, email : Text) -> async Result.Result<User, Text>;
+    getUser : (principalText : Text) -> async Result.Result<?User, Text>;
+    updateUser : (username : ?Text, email : ?Text) -> async Result.Result<User, Text>;
+    deleteUser : () -> async Result.Result<(), Text>;
   };
 
   public type ChatService = actor {

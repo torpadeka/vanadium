@@ -3,13 +3,13 @@ import { useState } from "react";
 
 // Register Page Component
 export default function RegisterPage() {
-  const { registerUser } = useUser();
+  const { register } = useUser();
   const [username, setUsername] = useState<string>("");
   const [email, setEmail] = useState<string>("");
 
   const handleRegister = async () => {
     try {
-      await registerUser(username, email);
+      await register(username, email);
     } catch (error: any) {
       alert(`Failed to register: ${error.message}`);
     }

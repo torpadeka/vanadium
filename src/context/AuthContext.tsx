@@ -1,178 +1,211 @@
-import React, { createContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useState, useEffect, useContext } from "react";
 import { AuthClient } from "@dfinity/auth-client";
-import { ActorSubclass } from "@dfinity/agent";
-import { createActor, canisterId } from "@/declarations/backend";
-import { _SERVICE } from "@/declarations/backend/backend.did";
+import { ActorSubclass, HttpAgent } from "@dfinity/agent";
+import { createActor, canisterId } from "@/declarations/user_service";
+import { _SERVICE, User } from "@/declarations/user_service/user_service.did";
+import { Principal } from "@ic-reactor/react/dist/types";
 
-// Define the network and identity provider
+interface AuthContextType {
+  isAuthenticated: boolean;
+  principal: string | null;
+  user: User | null;
+  actor: ActorSubclass<_SERVICE> | null;
+  isLoading: boolean;
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
+  register: (username: string, email: string) => Promise<void>;
+  // updateUser: (username?: string, email?: string) => Promise<void>;
+  deleteUser: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
 const network: string = process.env.DFX_NETWORK || "local";
 const identityProvider: string =
   network === "ic"
     ? "https://identity.ic0.app"
     : "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943";
 
-// Define types for user data
-interface UserData {
-  username: string;
-  email: string;
-  createdAt: bigint;
-}
-
-// Define the AuthContext value type
-interface AuthContextType {
-  isAuthenticated: boolean;
-  principal: string | null;
-  username: string | null;
-  email: string | null;
-  actor: ActorSubclass<_SERVICE> | null;
-  login: () => Promise<void>;
-  logout: () => Promise<void>;
-  registerUser: (username: string, email: string) => Promise<void>;
-  getUserData: () => Promise<UserData | null>;
-}
-
-// Create the AuthContext
-export const AuthContext = createContext<AuthContextType | null>(null);
-
-// AuthProvider component
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [authClient, setAuthClient] = useState<AuthClient | null>(null);
   const [actor, setActor] = useState<ActorSubclass<_SERVICE> | null>(null);
-  const [principal, setPrincipal] = useState<string | null>(null);
-  const [username, setUsername] = useState<string | null>(null);
-  const [email, setEmail] = useState<string | null>(null);
+  const [principal, setPrincipal] = useState<Principal | null>();
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Initialize authentication
-  const initializeAuth = useCallback(async () => {
+  useEffect(() => {
+    initializeAuth();
+  }, []);
+  const wslIp = "127.0.0.1";
+  async function initializeAuth(): Promise<void> {
     try {
+      setIsLoading(true);
       const client = await AuthClient.create();
+      console.log("AuthClient created:", client);
       const isAuth = await client.isAuthenticated();
       setAuthClient(client);
-
       if (isAuth) {
         const identity = client.getIdentity();
-        const principal = identity.getPrincipal().toText();
-        const newActor = createActor(canisterId, {
-          agentOptions: { identity },
+        const principal = identity.getPrincipal();
+        const agent = new HttpAgent({
+          host:
+            network === "local" ? `http://${wslIp}:4943` : "https://ic0.app",
         });
+        if (network === "local") {
+          await agent.fetchRootKey().catch((err) => {
+            console.warn("Unable to fetch root key for local replica:", err);
+          });
+        }
+        const newActor = createActor(canisterId, {
+          agentOptions: { identity, host: agent.host.toString() },
+        });
+        console.log(newActor);
+        console.log("Principal:", principal);
         setActor(newActor);
         setPrincipal(principal);
         setIsAuthenticated(true);
-
-        const userData = await newActor.getUser(principal);
-        if ("ok" in userData && userData.ok[0]) {
-          setUsername(userData.ok[0].username);
-          setEmail(userData.ok[0].email);
-        }
+        await fetchUser(principal, newActor);
       }
     } catch (error) {
-      console.error("Auth initialization failed:", error);
+      console.error("Initialization failed:", error);
+    } finally {
+      setIsLoading(false);
     }
-  }, []);
+  }
 
-  // Login function
-  const login = useCallback(async () => {
+  async function fetchUser(
+    principal: Principal,
+    actorToUse: ActorSubclass<_SERVICE>
+  ): Promise<void> {
     try {
-      if (!authClient) throw new Error("Auth client not initialized");
-      await authClient.login({
+      const result = await actorToUse.getUser(principal);
+      console.log("getUser result:", result);
+      if ("ok" in result) {
+        const fetchedUser = result.ok.length > 0 ? result.ok[0] : null;
+        // Check if username or email is empty
+        if (result.ok.length === 0) {
+          setUser(null); // Trigger registration if username or email is empty
+          // window.location.href = "/register"; // Redirect to registration page
+        } else {
+          setUser(fetchedUser || null);
+        }
+      } else {
+        console.error("Failed to fetch user:", result.err);
+        setUser(null);
+      }
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      setUser(null);
+    }
+  }
+
+  async function login(): Promise<void> {
+    try {
+      await authClient!.login({
         identityProvider,
         onSuccess: async () => {
-          const identity = authClient.getIdentity();
-          const principal = identity.getPrincipal().toText();
+          const identity = authClient!.getIdentity();
+          const principal = identity.getPrincipal();
           const newActor = createActor(canisterId, {
             agentOptions: { identity },
           });
           setActor(newActor);
           setPrincipal(principal);
           setIsAuthenticated(true);
-          const userData = await newActor.getUser(principal);
-          if ("ok" in userData && userData.ok[0]) {
-            setUsername(userData.ok[0].username);
-            setEmail(userData.ok[0].email);
-          }
+          await fetchUser(principal, newActor);
         },
       });
     } catch (error) {
       console.error("Login failed:", error);
-      throw new Error("Login failed. Please try again.");
+      alert("Login failed. Please try again.");
     }
-  }, [authClient]);
+  }
 
-  // Logout function
-  const logout = useCallback(async () => {
+  async function logout(): Promise<void> {
     try {
-      if (!authClient) throw new Error("Auth client not initialized");
-      await authClient.logout();
+      await authClient!.logout();
       setIsAuthenticated(false);
       setActor(null);
       setPrincipal(null);
-      setUsername(null);
-      setEmail(null);
+      setUser(null);
     } catch (error) {
       console.error("Logout failed:", error);
-      throw new Error("Logout failed.");
+      alert("Logout failed. Please try again.");
     }
-  }, [authClient]);
+  }
 
-  // Register user with username and email
-  const registerUser = useCallback(
-    async (username: string, email: string) => {
-      if (!username.trim()) throw new Error("Please enter a username");
-      if (!email.trim()) throw new Error("Please enter an email");
-      try {
-        if (!actor) throw new Error("Actor not initialized");
-        const result = await actor.registerUser(username, email);
-        if ("err" in result) throw new Error(result.err);
-        setUsername(username);
-        setEmail(email);
-      } catch (error) {
-        console.error("Registration failed:", error);
-        throw error;
-      }
-    },
-    [actor]
-  );
-
-  // Fetch user data
-  const getUserData = useCallback(async (): Promise<UserData | null> => {
-    if (!actor || !principal) return null;
+  async function register(username: string, email: string): Promise<void> {
+    if (!username || !email) {
+      alert("Username and email are required");
+      return;
+    }
     try {
-      const userData = await actor.getUser(principal);
-      return "ok" in userData && userData.ok[0] ? userData.ok[0] : null;
+      const result = await actor!.createUser(username, email);
+      if ("ok" in result) {
+        setUser(result.ok);
+      } else {
+        alert(`Registration failed: ${result.err}`);
+      }
     } catch (error) {
-      console.error("Failed to fetch user data:", error);
-      return null;
+      console.error("Registration failed:", error);
+      alert(`Registration failed: ${(error as Error).message}`);
     }
-  }, [actor, principal]);
+  }
 
-  // Initialize auth on mount
-  useEffect(() => {
-    initializeAuth();
-  }, [initializeAuth]);
+  // async function updateUser(username?: string, email?: string): Promise<void> {
+  //   try {
+  //     const result = await actor!.updateUser(username ?? null, email ?? null);
+  //     if ("ok" in result) {
+  //       setUser(result.ok);
+  //     } else {
+  //       alert(`Update failed: ${result.err}`);
+  //     }
+  //   } catch (error) {
+  //     console.error("Update failed:", error);
+  //     alert(`Update failed: ${(error as Error).message}`);
+  //   }
+  // }
+
+  async function deleteUser(): Promise<void> {
+    try {
+      const result = await actor!.deleteUser();
+      if ("ok" in result) {
+        setUser(null);
+        setIsAuthenticated(false);
+        setActor(null);
+        setPrincipal(null);
+      } else {
+        alert(`Delete failed: ${result.err}`);
+      }
+    } catch (error) {
+      console.error("Delete failed:", error);
+      alert(`Delete failed: ${(error as Error).message}`);
+    }
+  }
 
   const value: AuthContextType = {
     isAuthenticated,
-    principal,
-    username,
-    email,
+    principal: principal ? principal.toString() : null,
+    user,
     actor,
+    isLoading,
     login,
     logout,
-    registerUser,
-    getUserData,
+    register,
+    // updateUser,
+    deleteUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// Custom hook to use auth context
 export const useUser = (): AuthContextType => {
-  const context = React.useContext(AuthContext);
+  const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useUser must be used within an AuthProvider");
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };

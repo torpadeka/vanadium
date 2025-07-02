@@ -1,11 +1,13 @@
 import Time "mo:base/Time";
 import Text "mo:base/Text";
+import Principal "mo:base/Principal";
 
 type User = {
   id : Nat32;
   username : Text;
   email : Text;
   createdAt : Time.Time;
+  principal : Principal.Principal;
 };
 
 type Chat = {

@@ -26,11 +26,22 @@
         }
       },
       "wasm": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity_dev.wasm.gz"
+    },
+    "user_service": {
+      "type": "motoko",
+      "main": "backend/UserActor.mo",
+      "args": "--enhanced-orthogonal-persistence",
+      "declarations": {
+        "node_compatibility": true
+      }
     }
   },
   "defaults": {
     "build": {
       "packtool": "npm run --silent sources"
+    },
+    "replica":{
+      "cors_origins": ["http://localhost:3000", "http://127.0.0.1:3000"]
     }
   },
   "output_env_file": ".env",

@@ -19,13 +19,13 @@ actor UserActor {
       username = username;
       email = email;
       createdAt = Time.now();
+      principal = caller;
     };
     users.put(caller, user); // Store user by caller principal
     #ok(user);
   };
 
-  public query func getUser(principalText : Text) : async Result.Result<?Types.User, Text> {
-    let principal = Principal.fromText(principalText);
+  public query func getUser(principal : Principal) : async Result.Result<?Types.User, Text> {
     switch (users.get(principal)) {
       case (?user) #ok(?user);
       case null #ok(null);
@@ -40,6 +40,7 @@ actor UserActor {
           username = Option.get(username, user.username);
           email = Option.get(email, user.email);
           createdAt = user.createdAt;
+          principal = user.principal;
         };
         users.put(caller, updatedUser);
         #ok(updatedUser);

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import {
   Zap,
   Code,
@@ -26,6 +26,17 @@ type Tab = "home" | "features" | "pricing" | "about" | "login" | "logout";
 
 const LandingPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>("home");
+  const { isAuthenticated, user, logout } = useUser();
+  const navigate = useNavigate();
+  const { login } = useUser();
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -163,7 +174,6 @@ const LandingPage: React.FC = () => {
         );
 
       case "login":
-        const { login, isAuthenticated } = useUser();
         return (
           <div className="">
             {!isAuthenticated && (
@@ -246,13 +256,6 @@ const LandingPage: React.FC = () => {
         );
     }
   };
-  const { username } = useUser();
-  const logoutAction = () => {
-    const { logout } = useUser();
-    console.log("Logging out user:", username);
-    logout();
-    setActiveTab("login");
-  };
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Navigation */}
@@ -291,7 +294,7 @@ const LandingPage: React.FC = () => {
                 active={activeTab === "login"}
                 onClick={() => setActiveTab("login")}
               />
-              <Button onClick={() => logoutAction()} size="sm">
+              <Button onClick={() => handleLogout()} size="sm">
                 Logout
               </Button>
             </div>

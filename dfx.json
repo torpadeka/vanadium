@@ -1,15 +1,6 @@
 {
   "canisters": {
-    "backend": {
-      "type": "motoko",
-      "main": "backend/Main.mo",
-      "args": "--enhanced-orthogonal-persistence",
-      "declarations": {
-        "node_compatibility": true
-      }
-    },
     "frontend": {
-      "dependencies": ["backend"],
       "type": "assets",
       "frontend": {
         "entrypoint": "frontend/index.html"
@@ -34,13 +25,21 @@
       "declarations": {
         "node_compatibility": true
       }
+    },
+    "chat_system_service": {
+      "type": "motoko",
+      "main": "backend/ChatSystemActor.mo",
+      "args": "--enhanced-orthogonal-persistence",
+      "declarations": {
+        "node_compatibility": true
+      }
     }
   },
   "defaults": {
     "build": {
       "packtool": "npm run --silent sources"
     },
-    "replica":{
+    "replica": {
       "cors_origins": ["http://localhost:3000", "http://127.0.0.1:3000"]
     }
   },

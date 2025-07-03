@@ -3,16 +3,14 @@ import Text "mo:base/Text";
 import Principal "mo:base/Principal";
 
 type User = {
-  id : Nat32;
+  id : Principal.Principal;
   username : Text;
   email : Text;
-  createdAt : Time.Time;
-  principal : Principal.Principal;
-};
+  createdAt : Time.Time;};
 
 type Chat = {
   id : Nat32;
-  userId : Nat32;
+  userId : Principal.Principal;
   title : ?Text;
   createdAt : Time.Time;
 };

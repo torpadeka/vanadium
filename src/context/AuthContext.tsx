@@ -44,7 +44,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       setIsLoading(true);
       const client = await AuthClient.create();
-      console.log("AuthClient created:", client);
+      // console.log("AuthClient created:", client);
       const isAuth = await client.isAuthenticated();
       setAuthClient(client);
       if (isAuth) {
@@ -62,8 +62,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         const newActor = createActor(canisterId, {
           agentOptions: { identity, host: agent.host.toString() },
         });
-        console.log(newActor);
-        console.log("Principal:", principal);
+        // console.log(newActor);
+        // console.log("Principal:", principal);
         setActor(newActor);
         setPrincipal(principal);
         setIsAuthenticated(true);
@@ -82,7 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   ): Promise<void> {
     try {
       const result = await actorToUse.getUser(principal);
-      console.log("getUser result:", result);
+      // console.log("getUser result:", result);
       if ("ok" in result) {
         const fetchedUser = result.ok.length > 0 ? result.ok[0] : null;
         // Check if username or email is empty

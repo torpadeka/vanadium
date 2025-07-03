@@ -4,6 +4,7 @@ import { AuthProvider, useUser } from "./context/AuthContext";
 import LandingPage from "./pages/LandingPage";
 import Z9Page from "./pages/Z9Page";
 import RegisterPage from "./pages/RegisterPage";
+import TestAPIPage from "./pages/TestAPIPage";
 
 const App: React.FC = () => {
   const { isAuthenticated, user, actor, principal, login, logout } = useUser();
@@ -40,6 +41,7 @@ const App: React.FC = () => {
               // )
             }
           />
+          <Route path="/test" element={<TestAPIPage />} />
         </Routes>
       </div>
     </Router>

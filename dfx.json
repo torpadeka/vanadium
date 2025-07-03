@@ -1,6 +1,15 @@
 {
   "canisters": {
+    "backend": {
+      "type": "motoko",
+      "main": "backend/Main.mo",
+      "args": "--enhanced-orthogonal-persistence",
+      "declarations": {
+        "node_compatibility": true
+      }
+    },
     "frontend": {
+      "dependencies": ["backend"],
       "type": "assets",
       "frontend": {
         "entrypoint": "frontend/index.html"

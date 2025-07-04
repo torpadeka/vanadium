@@ -86,9 +86,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if ("ok" in result) {
         const fetchedUser = result.ok.length > 0 ? result.ok[0] : null;
         // Check if username or email is empty
-        if (result.ok.length === 0) {
+        if (!result.ok[0]?.username) {
           setUser(null); // Trigger registration if username or email is empty
-          // window.location.href = "/register"; // Redirect to registration page
         } else {
           setUser(fetchedUser || null);
         }
@@ -116,6 +115,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           setPrincipal(principal);
           setIsAuthenticated(true);
           await fetchUser(principal, newActor);
+          if (user == null) {
+            window.location.href = "/register"; // Redirect to registration page
+          }
         },
       });
     } catch (error) {
@@ -146,6 +148,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const result = await actor!.createUser(username, email);
       if ("ok" in result) {
         setUser(result.ok);
+        window.location.href = "/";
       } else {
         alert(`Registration failed: ${result.err}`);
       }

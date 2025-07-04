@@ -19,24 +19,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useUser } from "@/context/AuthContext";
 import { Console } from "console";
+import { useUserContext } from "@/context/AuthContextsx";
 
 type Tab = "home" | "features" | "pricing" | "about" | "login" | "logout";
 
 const LandingPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>("home");
-  const { isAuthenticated, user, logout } = useUser();
+  const { user } = useUserContext();
   const navigate = useNavigate();
-  const { login } = useUser();
-  const handleLogout = async () => {
-    try {
-      await logout();
-      navigate("/");
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  };
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -176,7 +167,7 @@ const LandingPage: React.FC = () => {
       case "login":
         return (
           <div className="">
-            {!isAuthenticated && (
+            {/* {!isAuthenticated && (
               <button
                 onClick={login}
                 className="flex items-center px-6 py-3 rounded-lg text-lg font-medium bg-blue-500 text-white hover:bg-blue-600 transition-all duration-200 shadow-lg"
@@ -197,7 +188,7 @@ const LandingPage: React.FC = () => {
                 </svg>
                 Get Started with Internet Identity
               </button>
-            )}
+            )} */}
           </div>
         );
 
@@ -269,6 +260,7 @@ const LandingPage: React.FC = () => {
               </span>
             </div>
             <div className="hidden md:flex items-center space-x-8">
+              <div className="margin-2">{user?.username}</div>
               <NavItem
                 label="Home"
                 active={activeTab === "home"}
@@ -292,11 +284,11 @@ const LandingPage: React.FC = () => {
               <NavItem
                 label="Login"
                 active={activeTab === "login"}
-                onClick={() => setActiveTab("login")}
+                onClick={() => (window.location.href = "login")}
               />
-              <Button onClick={() => handleLogout()} size="sm">
+              {/* <Button onClick={() => handleLogout()} size="sm">
                 Logout
-              </Button>
+              </Button> */}
             </div>
           </div>
         </div>

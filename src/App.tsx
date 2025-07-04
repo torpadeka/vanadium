@@ -1,46 +1,42 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router";
-import { AuthProvider, useUser } from "./context/AuthContext";
 import LandingPage from "./pages/LandingPage";
 import Z9Page from "./pages/Z9Page";
 import RegisterPage from "./pages/RegisterPage";
 import TestAPIPage from "./pages/TestAPIPage";
+import WhoamiPage from "./pages/LoginPage";
+import { UserProvider, useUserContext } from "./context/AuthContextsx";
+import { AuthProvider, useAuth } from "./context/AuthStateContext";
+import LoginPage from "./pages/LoginPage";
 
 const App: React.FC = () => {
-  const { isAuthenticated, user, actor, principal, login, logout } = useUser();
-  console.log("isAuthenticated:", isAuthenticated);
-  console.log("user?.username:", user?.username);
-  console.log(principal);
+  const { user, setUser } = useUserContext();
+  const { actor, principal } = useAuth();
 
-  // if (user?.username == null && isAuthenticated) {
-  //   window.location.href = "/register";
-  // }
+  useEffect(() => {
+    const restoreUser = async () => {
+      if (!user && actor && principal) {
+        try {
+          const { getUser } = await import("./context/AuthContextsx");
+          const fetchedUser = await getUser(actor, principal);
+          if (fetchedUser) setUser(fetchedUser);
+        } catch (err) {
+          console.error("Failed to restore user:", err);
+        }
+      }
+    };
+
+    restoreUser();
+  }, [user, actor, principal, setUser]);
 
   return (
     <Router>
       <div className="min-h-screen bg-black text-white font-inter">
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route
-            path="/z9"
-            element={
-              isAuthenticated && user?.username ? (
-                <Z9Page />
-              ) : (
-                <Navigate to="/" />
-              )
-            }
-          />
-          <Route
-            path="/register"
-            element={
-              isAuthenticated && user?.username == null ? (
-                <RegisterPage />
-              ) : (
-                <Navigate to={user?.username ? "/z9" : "/"} />
-              )
-            }
-          />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/z9" element={<Z9Page />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route path="/test" element={<TestAPIPage />} />
         </Routes>
       </div>
@@ -50,6 +46,8 @@ const App: React.FC = () => {
 
 export default () => (
   <AuthProvider>
-    <App />
+    <UserProvider>
+      <App />
+    </UserProvider>
   </AuthProvider>
 );

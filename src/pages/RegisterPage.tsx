@@ -1,15 +1,29 @@
-import { useUser } from "@/context/AuthContext";
-import { useState } from "react";
+import { AuthState, createUser, useUserContext } from "@/context/AuthContextsx";
+import { useAuth } from "@/context/AuthStateContext";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 
-// Register Page Component
 export default function RegisterPage() {
-  const { register } = useUser();
+  const { user, setUser } = useUserContext();
   const [username, setUsername] = useState<string>("");
   const [email, setEmail] = useState<string>("");
+  const navigate = useNavigate();
+
+  const { actor, principal } = useAuth();
+
+  useEffect(() => {
+    if (user && user.username && user.username !== "") {
+      navigate("/", { replace: true });
+    }
+  }, [user]);
 
   const handleRegister = async () => {
     try {
-      await register(username, email);
+      if (!actor) return;
+      const newUser = await createUser(actor, username, email);
+      console.log(newUser);
+      setUser(newUser);
+      navigate("/");
     } catch (error: any) {
       alert(`Failed to register: ${error.message}`);
     }

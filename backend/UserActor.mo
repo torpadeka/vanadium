@@ -54,4 +54,8 @@ actor UserActor {
       case null #err("User not found");
     };
   };
+
+  public query (message) func whoami() : async Principal {
+    message.caller;
+  };
 };

@@ -34,11 +34,11 @@ const App: React.FC = () => {
           <Route
             path="/register"
             element={
-              // isAuthenticated && user?.username == null ? (
-              <RegisterPage />
-              // ) : (
-              //   <Navigate to={user?.username ? "/z9" : "/"} />
-              // )
+              isAuthenticated && user?.username == null ? (
+                <RegisterPage />
+              ) : (
+                <Navigate to={user?.username ? "/z9" : "/"} />
+              )
             }
           />
           <Route path="/test" element={<TestAPIPage />} />

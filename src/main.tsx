@@ -5,12 +5,14 @@ import { canisterId, idlFactory } from "./declarations/backend";
 import "./index.css";
 import App from "./App";
 
+console.log("canisterId:", canisterId); // Debug line
+
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-    <React.StrictMode>
-        <AgentProvider withProcessEnv>
-            <ActorProvider idlFactory={idlFactory} canisterId={canisterId}>
-                <App />
-            </ActorProvider>
-        </AgentProvider>
-    </React.StrictMode>
+  <React.StrictMode>
+    <AgentProvider withProcessEnv>
+      <ActorProvider idlFactory={idlFactory} canisterId={canisterId}>
+        <App />
+      </ActorProvider>
+    </AgentProvider>
+  </React.StrictMode>
 );

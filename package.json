@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "setup": "npm i && dfx canister create backend && dfx generate backend && dfx deploy",
+    "setup": "npm i && dfx canister create user_service && dfx generate user_service && dfx canister create internet_identity && dfx deploy internet_identity && dfx generate internet_identity && dfx canister create chat_system_service && dfx generate chat_system_service && dfx canister create backend && dfx generate backend && dfx canister create frontend && dfx deploy frontend && dfx generate frontend && dfx deploy",
     "start": "run-p frontend backend",
     "frontend": "vite --port 3000",
     "backend": "mo-dev --generate --deploy -y",
@@ -17,8 +17,12 @@
     "postinstall": "mops install"
   },
   "dependencies": {
+    "@dfinity/agent": "^2.4.1",
+    "@dfinity/auth-client": "^2.4.1",
     "@ic-reactor/react": "^1.14.6",
     "@monaco-editor/react": "^4.7.0",
+    "@radix-ui/react-label": "^2.1.7",
+    "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
     "@tailwindcss/vite": "^4.1.11",
     "class-variance-authority": "^0.7.1",
@@ -33,6 +37,7 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.0.1",
+    "@types/node": "^24.0.8",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",

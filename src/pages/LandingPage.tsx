@@ -20,13 +20,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Console } from "console";
-import { useUserContext } from "@/context/AuthContextsx";
+import { useUser } from "@/context/AuthContext";
 
 type Tab = "home" | "features" | "pricing" | "about" | "login" | "logout";
 
 const LandingPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>("home");
-  const { user } = useUserContext();
+  const { user } = useUser();
   const navigate = useNavigate();
 
   const renderTabContent = () => {

@@ -8,9 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { useUser } from "@/context/AuthContext";
 import { ChatSystemHandler } from "@/handler/ChatSystemHandler";
 import { Principal } from "@dfinity/principal";
+import { useUser } from "@/context/AuthContext";
 
 interface Message {
   type: "success" | "error";

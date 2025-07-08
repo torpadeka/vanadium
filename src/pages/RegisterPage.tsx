@@ -1,15 +1,12 @@
-import { AuthState, createUser, useUserContext } from "@/context/AuthContextsx";
-import { useAuth } from "@/context/AuthStateContext";
+import { useUser } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 
 export default function RegisterPage() {
-  const { user, setUser } = useUserContext();
+  const { user, setUser, actor, createUser } = useUser();
   const [username, setUsername] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const navigate = useNavigate();
-
-  const { actor, principal } = useAuth();
 
   useEffect(() => {
     if (user && user.username && user.username !== "") {
@@ -20,7 +17,7 @@ export default function RegisterPage() {
   const handleRegister = async () => {
     try {
       if (!actor) return;
-      const newUser = await createUser(actor, username, email);
+      const newUser = await createUser(username, email);
       console.log(newUser);
       setUser(newUser);
       navigate("/");

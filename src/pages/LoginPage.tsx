@@ -1,17 +1,25 @@
+import { useUser } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/context/AuthStateContext";
-import { login, logout, useUserContext, whoami } from "@/context/AuthContextsx";
 
 export default function LoginPage() {
-  const { actor, principal, authClient, isAuthenticated } = useAuth();
-  const { user, setUser } = useUserContext();
+  const {
+    user,
+    actor,
+    principal,
+    authClient,
+    isAuthenticated,
+    login,
+    logout,
+    whoami,
+    setUser,
+  } = useUser();
   const [whoamiResult, setWhoamiResult] = useState<string>("Loading...");
 
   useEffect(() => {
     const fetchWhoami = async () => {
       if (!actor) return setWhoamiResult("Actor not available");
       try {
-        const result = await whoami(actor);
+        const result = await whoami();
         setWhoamiResult(result);
       } catch (error) {
         console.error("Whoami call failed:", error);
@@ -20,17 +28,14 @@ export default function LoginPage() {
     };
 
     fetchWhoami();
-  }, [actor]);
+  }, [actor, whoami]);
 
   const handleLogin = async () => {
-    if (!authClient || !actor || !principal) return;
-    await login(authClient, actor, principal, setUser);
+    await login();
   };
 
   const handleLogout = async () => {
-    if (!authClient) return;
-    await logout(authClient, () => {
-      setUser(null);
+    await logout(() => {
       window.location.reload();
     });
   };
@@ -49,7 +54,9 @@ export default function LoginPage() {
           <div>
             <span className="font-semibold text-gray-300">Principal:</span>
             <p className="text-sm break-all text-blue-400">
-              {principal?.toString() ?? "Not logged in"}
+              {principal?.toString() === "2vxsx-fae"
+                ? "You are not logged in yet"
+                : (principal?.toString() ?? "Not logged in")}
             </p>
           </div>
 
@@ -57,7 +64,11 @@ export default function LoginPage() {
             <span className="font-semibold text-gray-300">
               Canister whoami():
             </span>
-            <p className="text-sm text-purple-400">{whoamiResult}</p>
+            <p className="text-sm text-purple-400">
+              {whoamiResult === "2vxsx-fae"
+                ? "You are not logged in yet"
+                : whoamiResult}
+            </p>
           </div>
 
           {user && (

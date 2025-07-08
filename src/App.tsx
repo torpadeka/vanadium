@@ -1,25 +1,25 @@
-import React, { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router";
+import React, { useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router";
 import LandingPage from "./pages/LandingPage";
 import Z9Page from "./pages/Z9Page";
 import RegisterPage from "./pages/RegisterPage";
-import TestAPIPage from "./pages/TestAPIPage";
-import WhoamiPage from "./pages/LoginPage";
-import { UserProvider, useUserContext } from "./context/AuthContextsx";
-import { AuthProvider, useAuth } from "./context/AuthStateContext";
 import LoginPage from "./pages/LoginPage";
+import { UserProvider, useUser } from "@/context/AuthContext";
+import TestAPIPage from "./pages/TestAPIPage";
 
 const App: React.FC = () => {
-  const { user, setUser } = useUserContext();
-  const { actor, principal } = useAuth();
+  const { user, setUser, getUser, actor, principal, isAuthenticated } =
+    useUser();
 
   useEffect(() => {
     const restoreUser = async () => {
-      if (!user && actor && principal) {
+      // Only attempt to restore user if authenticated, actor and principal are available, and no user is set
+      if (!user && actor && principal && isAuthenticated) {
         try {
-          const { getUser } = await import("./context/AuthContextsx");
-          const fetchedUser = await getUser(actor, principal);
-          if (fetchedUser) setUser(fetchedUser);
+          const fetchedUser = await getUser(principal);
+          if (fetchedUser) {
+            setUser(fetchedUser);
+          }
         } catch (err) {
           console.error("Failed to restore user:", err);
         }
@@ -27,7 +27,7 @@ const App: React.FC = () => {
     };
 
     restoreUser();
-  }, [user, actor, principal, setUser]);
+  }, [actor, principal, isAuthenticated, setUser]); // Removed 'user' from dependencies
 
   return (
     <Router>
@@ -45,9 +45,7 @@ const App: React.FC = () => {
 };
 
 export default () => (
-  <AuthProvider>
-    <UserProvider>
-      <App />
-    </UserProvider>
-  </AuthProvider>
+  <UserProvider>
+    <App />
+  </UserProvider>
 );

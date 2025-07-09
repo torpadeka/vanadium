@@ -61,6 +61,11 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
                 {/* Chat List */}
                 <div className="flex-1 overflow-y-auto">
+                    {chats.length === 0 ? (
+                        <div className="p-4 text-center text-gray-500">
+                            No projects yet
+                        </div>
+                    ) : (
                     {chats.map((chat) => (
                         <button
                             key={chat.id}
@@ -95,6 +100,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                             </div>
                         </button>
                     ))}
+                    )}
                 </div>
 
                 {/* Footer */}

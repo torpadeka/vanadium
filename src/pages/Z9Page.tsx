@@ -15,9 +15,14 @@ import {
     Folder,
     FolderOpen,
     X,
+    ChevronRight,
+    ChevronDown,
+    FileText,
+    FolderPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import CodeEditor from "@/components/ui/CodeEditor";
 import PreviewPane from "@/components/PreviewPane";
 import CanvasPane from "@/components/CanvasPane";
@@ -55,6 +60,7 @@ interface FileTreeItem {
     content?: string;
     parentId?: number;
     children?: FileTreeItem[];
+    isExpanded?: boolean;
 }
 
 const Z9Page: React.FC = () => {
@@ -74,6 +80,12 @@ const Z9Page: React.FC = () => {
     const [fileTree, setFileTree] = useState<FileTreeItem[]>([]);
     const [selectedFile, setSelectedFile] = useState<ProjectFile | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [isInitializing, setIsInitializing] = useState(true);
+    const [expandedFolders, setExpandedFolders] = useState<Set<number>>(new Set());
+    const [showNewFileDialog, setShowNewFileDialog] = useState(false);
+    const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
+    const [newItemName, setNewItemName] = useState("");
+    const [newItemParentId, setNewItemParentId] = useState<number | undefined>();
     const [webContainer, setWebContainer] = useState<any>(null);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -250,10 +262,10 @@ body {
 
     // Load chats on component mount
     useEffect(() => {
-        if (isAuthenticated && principal) {
-            loadChats();
+        if (isAuthenticated && principal && isInitializing) {
+            initializeApp();
         }
-    }, [isAuthenticated, principal]);
+    }, [isAuthenticated, principal, isInitializing]);
 
     // Load chat data when currentChatId changes
     useEffect(() => {
@@ -275,6 +287,14 @@ body {
         scrollToBottom();
     }, [messages]);
 
+    const initializeApp = async () => {
+        try {
+            await loadChats();
+        } finally {
+            setIsInitializing(false);
+        }
+    };
+
     const loadChats = async () => {
         if (!principal) return;
 
@@ -287,20 +307,29 @@ body {
                     timestamp: new Date(Number(chat.createdAt) / 1000000),
                 }));
                 setChats(chatData);
-
-                // If no current chat, select the first one or create new
+                
+                // If no current chat and we have chats, select the first one
                 if (!currentChatId && chatData.length > 0) {
                     setCurrentChatId(Number(chatData[0].id));
-                } else if (!currentChatId && chatData.length === 0) {
-                    createNewChat();
+                } 
+                // If no chats exist, create a new one
+                else if (chatData.length === 0) {
+                    await createNewChat();
                 }
+            } else {
+                // If error or no chats, create a new one
+                await createNewChat();
             }
         } catch (error) {
-            console.error("Failed to load chats:", error);
+            console.error('Failed to load chats:', error);
+            // On error, try to create a new chat
+            await createNewChat();
         }
     };
 
     const createNewChat = async () => {
+        if (!principal) return;
+        
         try {
             const result = await chatHandler.createChat("New Project");
             if ("ok" in result) {
@@ -309,9 +338,14 @@ body {
 
                 // Create initial project version with default files
                 await createInitialProjectVersion(newChat.id);
-
-                // Reload chats
-                loadChats();
+                
+                // Add the new chat to the existing chats list instead of reloading
+                const newChatData: ChatData = {
+                    id: newChat.id.toString(),
+                    name: newChat.title?.[0] || `Chat ${newChat.id}`,
+                    timestamp: new Date(Number(newChat.createdAt) / 1000000),
+                };
+                setChats(prev => [...prev, newChatData]);
             }
         } catch (error) {
             console.error("Failed to create new chat:", error);
@@ -330,13 +364,29 @@ body {
             if ("ok" in versionResult) {
                 const version = versionResult.ok;
                 setCurrentVersion(version);
-
+                
+                // Create src folder first
+                const srcFolderResult = await chatHandler.createFolder(
+                    version.id,
+                    "src",
+                    undefined
+                );
+                
+                let srcFolderId: number | undefined;
+                if ('ok' in srcFolderResult) {
+                    srcFolderId = srcFolderResult.ok.id;
+                }
+                
                 // Create default files in the canister
                 for (const file of defaultFiles) {
+                    const isInSrc = file.name.startsWith('src/');
+                    const fileName = isInSrc ? file.name.replace('src/', '') : file.name;
+                    const folderId = isInSrc ? srcFolderId : undefined;
+                    
                     await chatHandler.createFile(
                         version.id,
-                        undefined,
-                        file.name,
+                        folderId,
+                        fileName,
                         file.content
                     );
                 }
@@ -417,6 +467,7 @@ body {
                 type: "folder",
                 parentId: folder.parentId?.[0],
                 children: [],
+                isExpanded: expandedFolders.has(folder.id)
             };
             folderMap.set(folder.id, folderItem);
         });
@@ -455,6 +506,91 @@ body {
         });
 
         setFileTree(tree);
+    };
+
+    const toggleFolder = (folderId: number) => {
+        setExpandedFolders(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(folderId)) {
+                newSet.delete(folderId);
+            } else {
+                newSet.add(folderId);
+            }
+            return newSet;
+        });
+    };
+
+    const handleCreateFile = async () => {
+        if (!newItemName.trim() || !currentVersion) return;
+        
+        try {
+            const result = await chatHandler.createFile(
+                currentVersion.id,
+                newItemParentId,
+                newItemName,
+                "// New file\n"
+            );
+            
+            if ('ok' in result) {
+                await loadProjectFiles(currentVersion.id);
+                setShowNewFileDialog(false);
+                setNewItemName("");
+                setNewItemParentId(undefined);
+            }
+        } catch (error) {
+            console.error('Failed to create file:', error);
+        }
+    };
+
+    const handleCreateFolder = async () => {
+        if (!newItemName.trim() || !currentVersion) return;
+        
+        try {
+            const result = await chatHandler.createFolder(
+                currentVersion.id,
+                newItemName,
+                newItemParentId
+            );
+            
+            if ('ok' in result) {
+                await loadProjectFiles(currentVersion.id);
+                setExpandedFolders(prev => new Set([...prev, result.ok.id]));
+                setShowNewFolderDialog(false);
+                setNewItemName("");
+                setNewItemParentId(undefined);
+            }
+        } catch (error) {
+            console.error('Failed to create folder:', error);
+        }
+    };
+
+    const updateFileContent = async (fileId: number, newContent: string) => {
+        try {
+            const result = await chatHandler.updateFile(
+                fileId,
+                undefined,
+                undefined,
+                newContent
+            );
+            
+            if ('ok' in result) {
+                // Update the local state
+                setProjectFiles(prev => 
+                    prev.map(file => 
+                        file.id === fileId 
+                            ? { ...file, content: newContent }
+                            : file
+                    )
+                );
+                
+                // Update selected file if it's the one being edited
+                if (selectedFile?.id === fileId) {
+                    setSelectedFile(prev => prev ? { ...prev, content: newContent } : null);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to update file:', error);
+        }
     };
 
     const handleSendMessage = async () => {
@@ -589,29 +725,46 @@ This is a placeholder response. The actual implementation will connect to Azure 
     };
 
     const renderFileTree = (items: FileTreeItem[], level = 0) => {
-        return items.map((item) => (
-            <div key={item.id} style={{ marginLeft: level * 16 }}>
+        return items.map(item => (
+            <div key={item.id}>
                 <div
-                    className={`flex items-center space-x-2 px-2 py-1 hover:bg-gray-800 cursor-pointer rounded ${
-                        selectedFile?.id === item.id ? "bg-gray-700" : ""
+                    className={`flex items-center space-x-1 px-2 py-1 hover:bg-gray-800 cursor-pointer rounded ${
+                        selectedFile?.id === item.id ? 'bg-gray-700' : ''
                     }`}
+                    style={{ marginLeft: level * 16 }}
                     onClick={() => {
-                        if (item.type === "file") {
-                            const file = projectFiles.find(
-                                (f) => f.id === item.id
-                            );
+                        if (item.type === 'folder') {
+                            toggleFolder(item.id);
+                        } else {
+                            const file = projectFiles.find(f => f.id === item.id);
                             if (file) handleFileSelect(file);
                         }
                     }}
                 >
-                    {item.type === "folder" ? (
-                        <FolderOpen className="w-4 h-4 text-blue-400" />
+                    {item.type === 'folder' ? (
+                        <>
+                            {item.isExpanded ? (
+                                <ChevronDown className="w-3 h-3 text-gray-400" />
+                            ) : (
+                                <ChevronRight className="w-3 h-3 text-gray-400" />
+                            )}
+                            {item.isExpanded ? (
+                                <FolderOpen className="w-4 h-4 text-blue-400" />
+                            ) : (
+                                <Folder className="w-4 h-4 text-blue-400" />
+                            )}
+                        </>
                     ) : (
-                        <File className="w-4 h-4 text-gray-400" />
+                        <>
+                            <div className="w-3 h-3" /> {/* Spacer for alignment */}
+                            <FileText className="w-4 h-4 text-gray-400" />
+                        </>
                     )}
                     <span className="text-sm">{item.name}</span>
                 </div>
-                {item.children && renderFileTree(item.children, level + 1)}
+                {item.type === 'folder' && item.isExpanded && item.children && (
+                    renderFileTree(item.children, level + 1)
+                )}
             </div>
         ));
     };
@@ -625,23 +778,32 @@ This is a placeholder response. The actual implementation will connect to Azure 
                         <div className="w-64 border-r border-gray-800 bg-gray-950 overflow-y-auto">
                             <div className="p-3 border-b border-gray-800">
                                 <div className="flex items-center justify-between">
-                                    <h3 className="text-sm font-medium text-gray-300">
-                                        Files
-                                    </h3>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-6 w-6"
-                                    >
-                                        <Plus className="w-3 h-3" />
-                                    </Button>
+                                    <h3 className="text-sm font-medium text-gray-300">Files</h3>
+                                    <div className="flex space-x-1">
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="h-6 w-6"
+                                            onClick={() => setShowNewFileDialog(true)}
+                                            title="New File"
+                                        >
+                                            <FileText className="w-3 h-3" />
+                                        </Button>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="h-6 w-6"
+                                            onClick={() => setShowNewFolderDialog(true)}
+                                            title="New Folder"
+                                        >
+                                            <FolderPlus className="w-3 h-3" />
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
                             <div className="p-2">
-                                {isLoading ? (
-                                    <div className="text-center text-gray-500 py-4">
-                                        Loading...
-                                    </div>
+                                {isLoading || isInitializing ? (
+                                    <div className="text-center text-gray-500 py-4">Loading...</div>
                                 ) : (
                                     renderFileTree(fileTree)
                                 )}
@@ -651,15 +813,9 @@ This is a placeholder response. The actual implementation will connect to Azure 
                         {/* Code Editor */}
                         <div className="flex-1">
                             {selectedFile ? (
-                                <CodeEditor
-                                    code={selectedFile.content}
-                                    onChange={(newContent) => {
-                                        // TODO: Implement file content updates
-                                        console.log(
-                                            "File content changed:",
-                                            newContent
-                                        );
-                                    }}
+                                <CodeEditor 
+                                    code={selectedFile.content} 
+                                    onChange={(newContent) => updateFileContent(selectedFile.id, newContent)}
                                 />
                             ) : (
                                 <div className="flex items-center justify-center h-full text-gray-500">
@@ -684,19 +840,25 @@ This is a placeholder response. The actual implementation will connect to Azure 
         }
     };
 
-    if (!isAuthenticated) {
+    if (!isAuthenticated || isInitializing) {
         return (
             <div className="h-screen bg-black text-white flex items-center justify-center">
                 <div className="text-center">
-                    <h1 className="text-2xl font-bold mb-4">
-                        Authentication Required
-                    </h1>
-                    <p className="text-gray-400 mb-6">
-                        Please log in to access the Z9 AI Assistant
-                    </p>
-                    <Button asChild>
-                        <Link to="/login">Go to Login</Link>
-                    </Button>
+                    {!isAuthenticated ? (
+                        <>
+                            <h1 className="text-2xl font-bold mb-4">Authentication Required</h1>
+                            <p className="text-gray-400 mb-6">Please log in to access the Z9 AI Assistant</p>
+                            <Button asChild>
+                                <Link to="/login">Go to Login</Link>
+                            </Button>
+                        </>
+                    ) : (
+                        <>
+                            <Zap className="w-12 h-12 text-purple-glow mx-auto mb-4 animate-pulse" />
+                            <h1 className="text-2xl font-bold mb-4">Initializing Z9...</h1>
+                            <p className="text-gray-400">Setting up your workspace</p>
+                        </>
+                    )}
                 </div>
             </div>
         );
@@ -704,6 +866,74 @@ This is a placeholder response. The actual implementation will connect to Azure 
 
     return (
         <div className="h-screen bg-black text-white flex">
+            {/* New File Dialog */}
+            {showNewFileDialog && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+                    <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 w-96">
+                        <h3 className="text-lg font-semibold mb-4">Create New File</h3>
+                        <Input
+                            value={newItemName}
+                            onChange={(e) => setNewItemName(e.target.value)}
+                            placeholder="Enter file name (e.g., component.jsx)"
+                            className="mb-4"
+                            onKeyPress={(e) => {
+                                if (e.key === 'Enter') {
+                                    handleCreateFile();
+                                }
+                            }}
+                        />
+                        <div className="flex justify-end space-x-2">
+                            <Button 
+                                variant="outline" 
+                                onClick={() => {
+                                    setShowNewFileDialog(false);
+                                    setNewItemName("");
+                                }}
+                            >
+                                Cancel
+                            </Button>
+                            <Button onClick={handleCreateFile} disabled={!newItemName.trim()}>
+                                Create
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* New Folder Dialog */}
+            {showNewFolderDialog && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+                    <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 w-96">
+                        <h3 className="text-lg font-semibold mb-4">Create New Folder</h3>
+                        <Input
+                            value={newItemName}
+                            onChange={(e) => setNewItemName(e.target.value)}
+                            placeholder="Enter folder name"
+                            className="mb-4"
+                            onKeyPress={(e) => {
+                                if (e.key === 'Enter') {
+                                    handleCreateFolder();
+                                }
+                            }}
+                        />
+                        <div className="flex justify-end space-x-2">
+                            <Button 
+                                variant="outline" 
+                                onClick={() => {
+                                    setShowNewFolderDialog(false);
+                                    setNewItemName("");
+                                }}
+                            >
+                                Cancel
+                            </Button>
+                            <Button onClick={handleCreateFolder} disabled={!newItemName.trim()}>
+                                Create
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Chat Selector Popup */}
             {showChatSelector && (
                 <ChatSidebar
@@ -711,6 +941,7 @@ This is a placeholder response. The actual implementation will connect to Azure 
                     currentChat={currentChatId?.toString() || ""}
                     onSelectChat={(chatId) => setCurrentChatId(Number(chatId))}
                     onClose={() => setShowChatSelector(false)}
+                    onNewProject={createNewChat}
                 />
             )}
 
@@ -759,7 +990,7 @@ This is a placeholder response. The actual implementation will connect to Azure 
 
                 {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                    {isLoading ? (
+                    {isLoading || isInitializing ? (
                         <div className="flex justify-center py-8">
                             <div className="text-gray-500">Loading chat...</div>
                         </div>
@@ -811,13 +1042,11 @@ This is a placeholder response. The actual implementation will connect to Azure 
                                 placeholder="Describe what you want to build..."
                                 className="pr-12 shadow-glow-sm focus:shadow-glow transition-shadow"
                                 rows={2}
-                                disabled={!currentChatId}
+                                disabled={!currentChatId || isInitializing}
                             />
                             <Button
                                 onClick={handleSendMessage}
-                                disabled={
-                                    !inputMessage.trim() || !currentChatId
-                                }
+                                disabled={!inputMessage.trim() || !currentChatId || isInitializing}
                                 size="icon"
                                 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-8 w-8"
                                 variant="ghost"

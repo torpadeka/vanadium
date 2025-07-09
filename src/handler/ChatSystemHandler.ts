@@ -151,7 +151,7 @@ export class ChatSystemHandler {
   // File Methods
   async createFile(
     versionId: number,
-    folderId: number,
+    folderId: number | undefined,
     name: string,
     content: string
   ): Promise<Result_2> {

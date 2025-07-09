@@ -66,40 +66,40 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                             No projects yet
                         </div>
                     ) : (
-                    {chats.map((chat) => (
-                        <button
-                            key={chat.id}
-                            onClick={() => {
-                                onSelectChat(chat.id);
-                                onClose();
-                            }}
-                            className={`w-full text-left p-4 border-b border-gray-800 hover:bg-gray-800 transition-colors ${
-                                currentChat === chat.id
-                                    ? "bg-gray-800 border-l-4 border-l-purple-glow"
-                                    : ""
-                            }`}
-                        >
-                            <div className="flex items-start space-x-3">
-                                <div className="flex-shrink-0 mt-1">
-                                    <MessageSquare className="w-4 h-4 text-gray-400" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <h3 className="text-sm font-medium text-white truncate">
-                                        {chat.name}
-                                    </h3>
-                                    {chat.lastMessage && (
-                                        <p className="text-xs text-gray-400 mt-1 line-clamp-2">
-                                            {chat.lastMessage}
-                                        </p>
-                                    )}
-                                    <div className="flex items-center mt-2 text-xs text-gray-500">
-                                        <Clock className="w-3 h-3 mr-1" />
-                                        {formatTimestamp(chat.timestamp)}
+                        chats.map((chat) => (
+                            <button
+                                key={chat.id}
+                                onClick={() => {
+                                    onSelectChat(chat.id);
+                                    onClose();
+                                }}
+                                className={`w-full text-left p-4 border-b border-gray-800 hover:bg-gray-800 transition-colors ${
+                                    currentChat === chat.id
+                                        ? "bg-gray-800 border-l-4 border-l-purple-glow"
+                                        : ""
+                                }`}
+                            >
+                                <div className="flex items-start space-x-3">
+                                    <div className="flex-shrink-0 mt-1">
+                                        <MessageSquare className="w-4 h-4 text-gray-400" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="text-sm font-medium text-white truncate">
+                                            {chat.name}
+                                        </h3>
+                                        {chat.lastMessage && (
+                                            <p className="text-xs text-gray-400 mt-1 line-clamp-2">
+                                                {chat.lastMessage}
+                                            </p>
+                                        )}
+                                        <div className="flex items-center mt-2 text-xs text-gray-500">
+                                            <Clock className="w-3 h-3 mr-1" />
+                                            {formatTimestamp(chat.timestamp)}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </button>
-                    ))}
+                            </button>
+                        ))
                     )}
                 </div>
 

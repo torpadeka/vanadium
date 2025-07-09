@@ -66,7 +66,9 @@ const Z9Page: React.FC = () => {
     const [messages, setMessages] = useState<MessageData[]>([]);
     const [inputMessage, setInputMessage] = useState("");
     const [chatHandler] = useState(() => new ChatSystemHandler());
-    const [currentVersion, setCurrentVersion] = useState<ProjectVersion | null>(null);
+    const [currentVersion, setCurrentVersion] = useState<ProjectVersion | null>(
+        null
+    );
     const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
     const [projectFolders, setProjectFolders] = useState<ProjectFolder[]>([]);
     const [fileTree, setFileTree] = useState<FileTreeItem[]>([]);
@@ -100,7 +102,7 @@ const Z9Page: React.FC = () => {
     "@vitejs/plugin-react": "^4.0.3",
     "vite": "^4.4.5"
   }
-}`
+}`,
         },
         {
             name: "index.html",
@@ -116,7 +118,7 @@ const Z9Page: React.FC = () => {
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
-</html>`
+</html>`,
         },
         {
             name: "vite.config.js",
@@ -125,7 +127,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-})`
+})`,
         },
         {
             name: "src/main.jsx",
@@ -138,7 +140,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <App />
   </React.StrictMode>,
-)`
+)`,
         },
         {
             name: "src/App.jsx",
@@ -166,7 +168,7 @@ function App() {
   )
 }
 
-export default App`
+export default App`,
         },
         {
             name: "src/App.css",
@@ -187,7 +189,7 @@ export default App`
 
 .read-the-docs {
   color: #888;
-}`
+}`,
         },
         {
             name: "src/index.css",
@@ -220,25 +222,26 @@ body {
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
-}`
-        }
+}`,
+        },
     ];
 
     // Initialize WebContainer
     useEffect(() => {
         const initWebContainer = async () => {
             try {
-                const { auth } = await import('@webcontainer/api');
+                const { auth } = await import("@webcontainer/api");
                 await auth.init({
-                    clientId: 'wc_api_torpadeka_a411a15978c06c356116d73259572b17',
-                    scope: '',
+                    clientId:
+                        "wc_api_torpadeka_a411a15978c06c356116d73259572b17",
+                    scope: "",
                 });
-                
-                const { WebContainer } = await import('@webcontainer/api');
+
+                const { WebContainer } = await import("@webcontainer/api");
                 const container = await WebContainer.boot();
                 setWebContainer(container);
             } catch (error) {
-                console.error('Failed to initialize WebContainer:', error);
+                console.error("Failed to initialize WebContainer:", error);
             }
         };
 
@@ -274,17 +277,17 @@ body {
 
     const loadChats = async () => {
         if (!principal) return;
-        
+
         try {
             const result = await chatHandler.getAllChatByUserId(principal);
-            if ('ok' in result) {
+            if ("ok" in result) {
                 const chatData: ChatData[] = result.ok.map((chat: Chat) => ({
                     id: chat.id.toString(),
                     name: chat.title?.[0] || `Chat ${chat.id}`,
                     timestamp: new Date(Number(chat.createdAt) / 1000000),
                 }));
                 setChats(chatData);
-                
+
                 // If no current chat, select the first one or create new
                 if (!currentChatId && chatData.length > 0) {
                     setCurrentChatId(Number(chatData[0].id));
@@ -293,25 +296,25 @@ body {
                 }
             }
         } catch (error) {
-            console.error('Failed to load chats:', error);
+            console.error("Failed to load chats:", error);
         }
     };
 
     const createNewChat = async () => {
         try {
             const result = await chatHandler.createChat("New Project");
-            if ('ok' in result) {
+            if ("ok" in result) {
                 const newChat = result.ok;
                 setCurrentChatId(newChat.id);
-                
+
                 // Create initial project version with default files
                 await createInitialProjectVersion(newChat.id);
-                
+
                 // Reload chats
                 loadChats();
             }
         } catch (error) {
-            console.error('Failed to create new chat:', error);
+            console.error("Failed to create new chat:", error);
         }
     };
 
@@ -323,11 +326,11 @@ body {
                 1,
                 JSON.stringify({ files: defaultFiles })
             );
-            
-            if ('ok' in versionResult) {
+
+            if ("ok" in versionResult) {
                 const version = versionResult.ok;
                 setCurrentVersion(version);
-                
+
                 // Create default files in the canister
                 for (const file of defaultFiles) {
                     await chatHandler.createFile(
@@ -339,7 +342,7 @@ body {
                 }
             }
         } catch (error) {
-            console.error('Failed to create initial project version:', error);
+            console.error("Failed to create initial project version:", error);
         }
     };
 
@@ -347,28 +350,33 @@ body {
         setIsLoading(true);
         try {
             // Load messages
-            const messagesResult = await chatHandler.getAllMessageByChatId(chatId);
-            if ('ok' in messagesResult) {
-                const messageData: MessageData[] = messagesResult.ok.map((msg: Message) => ({
-                    id: msg.id.toString(),
-                    content: msg.content,
-                    isUser: 'user' in msg.sender,
-                    timestamp: new Date(Number(msg.createdAt) / 1000000),
-                }));
+            const messagesResult =
+                await chatHandler.getAllMessageByChatId(chatId);
+            if ("ok" in messagesResult) {
+                const messageData: MessageData[] = messagesResult.ok.map(
+                    (msg: Message) => ({
+                        id: msg.id.toString(),
+                        content: msg.content,
+                        isUser: "user" in msg.sender,
+                        timestamp: new Date(Number(msg.createdAt) / 1000000),
+                    })
+                );
                 setMessages(messageData);
             }
 
             // Load project versions
-            const versionsResult = await chatHandler.getAllProjectVersionByChatId(chatId);
-            if ('ok' in versionsResult && versionsResult.ok.length > 0) {
-                const latestVersion = versionsResult.ok[versionsResult.ok.length - 1];
+            const versionsResult =
+                await chatHandler.getAllProjectVersionByChatId(chatId);
+            if ("ok" in versionsResult && versionsResult.ok.length > 0) {
+                const latestVersion =
+                    versionsResult.ok[versionsResult.ok.length - 1];
                 setCurrentVersion(latestVersion);
-                
+
                 // Load files and folders for this version
                 await loadProjectFiles(latestVersion.id);
             }
         } catch (error) {
-            console.error('Failed to load chat data:', error);
+            console.error("Failed to load chat data:", error);
         } finally {
             setIsLoading(false);
         }
@@ -378,10 +386,10 @@ body {
         try {
             const [filesResult, foldersResult] = await Promise.all([
                 chatHandler.getAllFileByProjectVersionId(versionId),
-                chatHandler.getAllFolderByProjectVersionId(versionId)
+                chatHandler.getAllFolderByProjectVersionId(versionId),
             ]);
 
-            if ('ok' in filesResult) {
+            if ("ok" in filesResult) {
                 setProjectFiles(filesResult.ok);
                 // Set first file as selected if none selected
                 if (!selectedFile && filesResult.ok.length > 0) {
@@ -389,11 +397,11 @@ body {
                 }
             }
 
-            if ('ok' in foldersResult) {
+            if ("ok" in foldersResult) {
                 setProjectFolders(foldersResult.ok);
             }
         } catch (error) {
-            console.error('Failed to load project files:', error);
+            console.error("Failed to load project files:", error);
         }
     };
 
@@ -402,25 +410,25 @@ body {
         const folderMap = new Map<number, FileTreeItem>();
 
         // Create folder items
-        projectFolders.forEach(folder => {
+        projectFolders.forEach((folder) => {
             const folderItem: FileTreeItem = {
                 id: folder.id,
                 name: folder.name,
                 type: "folder",
                 parentId: folder.parentId?.[0],
-                children: []
+                children: [],
             };
             folderMap.set(folder.id, folderItem);
         });
 
         // Create file items and organize tree
-        projectFiles.forEach(file => {
+        projectFiles.forEach((file) => {
             const fileItem: FileTreeItem = {
                 id: file.id,
                 name: file.name,
                 type: "file",
                 content: file.content,
-                parentId: file.folderId?.[0]
+                parentId: file.folderId?.[0],
             };
 
             if (file.folderId?.[0]) {
@@ -434,7 +442,7 @@ body {
         });
 
         // Add folders to tree
-        projectFolders.forEach(folder => {
+        projectFolders.forEach((folder) => {
             const folderItem = folderMap.get(folder.id);
             if (folderItem && !folder.parentId?.[0]) {
                 tree.push(folderItem);
@@ -459,8 +467,8 @@ body {
             timestamp: new Date(),
         };
 
-        setMessages(prev => [...prev, userMessage]);
-        
+        setMessages((prev) => [...prev, userMessage]);
+
         // Save user message to canister
         try {
             await chatHandler.createMessage(
@@ -470,7 +478,7 @@ body {
                 currentVersion?.id
             );
         } catch (error) {
-            console.error('Failed to save user message:', error);
+            console.error("Failed to save user message:", error);
         }
 
         const currentInput = inputMessage;
@@ -479,16 +487,16 @@ body {
         // Send to Azure GPT (placeholder implementation)
         try {
             const aiResponse = await sendToAzureGPT(currentInput);
-            
+
             const aiMessage: MessageData = {
                 id: (Date.now() + 1).toString(),
                 content: aiResponse,
                 isUser: false,
                 timestamp: new Date(),
             };
-            
-            setMessages(prev => [...prev, aiMessage]);
-            
+
+            setMessages((prev) => [...prev, aiMessage]);
+
             // Save AI message to canister
             await chatHandler.createMessage(
                 currentChatId,
@@ -500,31 +508,31 @@ body {
             // TODO: Process AI response to extract and update code files
             // This is where we'll later implement code extraction and file updates
             await processAIResponse(aiResponse);
-            
         } catch (error) {
-            console.error('Failed to get AI response:', error);
+            console.error("Failed to get AI response:", error);
             const errorMessage: MessageData = {
                 id: (Date.now() + 2).toString(),
-                content: "Sorry, I encountered an error processing your request. Please try again.",
+                content:
+                    "Sorry, I encountered an error processing your request. Please try again.",
                 isUser: false,
                 timestamp: new Date(),
             };
-            setMessages(prev => [...prev, errorMessage]);
+            setMessages((prev) => [...prev, errorMessage]);
         }
     };
 
     const sendToAzureGPT = async (userInput: string): Promise<string> => {
         // Placeholder implementation for Azure GPT integration
         // TODO: Replace with actual Azure OpenAI API call
-        
+
         const systemPrompt = `You are Z9, an AI assistant specialized in generating React applications with Vite. 
         You help users create, modify, and improve their React projects. When generating code, provide complete, 
         working files that can be directly used in a Vite React project. Always consider modern React best practices, 
         hooks, and functional components.`;
 
         // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
         // Placeholder response - replace with actual Azure OpenAI API call
         return `I understand you want to ${userInput.toLowerCase()}. Here's what I can help you with:
 
@@ -559,9 +567,9 @@ This is a placeholder response. The actual implementation will connect to Azure 
         // 2. Identify which files need to be created/updated
         // 3. Update the canister with new/modified files
         // 4. Refresh the file tree and preview
-        
-        console.log('Processing AI response:', response);
-        
+
+        console.log("Processing AI response:", response);
+
         // Placeholder for future implementation
         // const codeBlocks = extractCodeBlocks(response);
         // for (const block of codeBlocks) {
@@ -581,20 +589,22 @@ This is a placeholder response. The actual implementation will connect to Azure 
     };
 
     const renderFileTree = (items: FileTreeItem[], level = 0) => {
-        return items.map(item => (
+        return items.map((item) => (
             <div key={item.id} style={{ marginLeft: level * 16 }}>
                 <div
                     className={`flex items-center space-x-2 px-2 py-1 hover:bg-gray-800 cursor-pointer rounded ${
-                        selectedFile?.id === item.id ? 'bg-gray-700' : ''
+                        selectedFile?.id === item.id ? "bg-gray-700" : ""
                     }`}
                     onClick={() => {
-                        if (item.type === 'file') {
-                            const file = projectFiles.find(f => f.id === item.id);
+                        if (item.type === "file") {
+                            const file = projectFiles.find(
+                                (f) => f.id === item.id
+                            );
                             if (file) handleFileSelect(file);
                         }
                     }}
                 >
-                    {item.type === 'folder' ? (
+                    {item.type === "folder" ? (
                         <FolderOpen className="w-4 h-4 text-blue-400" />
                     ) : (
                         <File className="w-4 h-4 text-gray-400" />
@@ -615,29 +625,40 @@ This is a placeholder response. The actual implementation will connect to Azure 
                         <div className="w-64 border-r border-gray-800 bg-gray-950 overflow-y-auto">
                             <div className="p-3 border-b border-gray-800">
                                 <div className="flex items-center justify-between">
-                                    <h3 className="text-sm font-medium text-gray-300">Files</h3>
-                                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                                    <h3 className="text-sm font-medium text-gray-300">
+                                        Files
+                                    </h3>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6"
+                                    >
                                         <Plus className="w-3 h-3" />
                                     </Button>
                                 </div>
                             </div>
                             <div className="p-2">
                                 {isLoading ? (
-                                    <div className="text-center text-gray-500 py-4">Loading...</div>
+                                    <div className="text-center text-gray-500 py-4">
+                                        Loading...
+                                    </div>
                                 ) : (
                                     renderFileTree(fileTree)
                                 )}
                             </div>
                         </div>
-                        
+
                         {/* Code Editor */}
                         <div className="flex-1">
                             {selectedFile ? (
-                                <CodeEditor 
-                                    code={selectedFile.content} 
+                                <CodeEditor
+                                    code={selectedFile.content}
                                     onChange={(newContent) => {
                                         // TODO: Implement file content updates
-                                        console.log('File content changed:', newContent);
+                                        console.log(
+                                            "File content changed:",
+                                            newContent
+                                        );
                                     }}
                                 />
                             ) : (
@@ -667,8 +688,12 @@ This is a placeholder response. The actual implementation will connect to Azure 
         return (
             <div className="h-screen bg-black text-white flex items-center justify-center">
                 <div className="text-center">
-                    <h1 className="text-2xl font-bold mb-4">Authentication Required</h1>
-                    <p className="text-gray-400 mb-6">Please log in to access the Z9 AI Assistant</p>
+                    <h1 className="text-2xl font-bold mb-4">
+                        Authentication Required
+                    </h1>
+                    <p className="text-gray-400 mb-6">
+                        Please log in to access the Z9 AI Assistant
+                    </p>
                     <Button asChild>
                         <Link to="/login">Go to Login</Link>
                     </Button>
@@ -712,11 +737,17 @@ This is a placeholder response. The actual implementation will connect to Azure 
                         </Button>
                         <div className="flex items-center space-x-2">
                             <Zap className="w-6 h-6 text-purple-glow" />
-                            <h1 className="text-xl font-semibold">Z9 AI Assistant</h1>
+                            <h1 className="text-xl font-semibold">
+                                Z9 AI Assistant
+                            </h1>
                         </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                        <Button variant="ghost" size="sm" onClick={createNewChat}>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={createNewChat}
+                        >
                             <Plus className="w-4 h-4 mr-1" />
                             New
                         </Button>
@@ -736,7 +767,8 @@ This is a placeholder response. The actual implementation will connect to Azure 
                         <div className="flex justify-start">
                             <div className="max-w-[80%] rounded-lg p-3 bg-gray-900 border border-gray-800">
                                 <p className="text-sm leading-relaxed">
-                                    Hello! I'm Z9, your AI assistant. What would you like to build today?
+                                    Hello! I'm Z9, your AI assistant. What would
+                                    you like to build today?
                                 </p>
                             </div>
                         </div>
@@ -772,7 +804,9 @@ This is a placeholder response. The actual implementation will connect to Azure 
                         <div className="flex-1 relative">
                             <Textarea
                                 value={inputMessage}
-                                onChange={(e) => setInputMessage(e.target.value)}
+                                onChange={(e) =>
+                                    setInputMessage(e.target.value)
+                                }
                                 onKeyPress={handleKeyPress}
                                 placeholder="Describe what you want to build..."
                                 className="pr-12 shadow-glow-sm focus:shadow-glow transition-shadow"
@@ -781,7 +815,9 @@ This is a placeholder response. The actual implementation will connect to Azure 
                             />
                             <Button
                                 onClick={handleSendMessage}
-                                disabled={!inputMessage.trim() || !currentChatId}
+                                disabled={
+                                    !inputMessage.trim() || !currentChatId
+                                }
                                 size="icon"
                                 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-8 w-8"
                                 variant="ghost"

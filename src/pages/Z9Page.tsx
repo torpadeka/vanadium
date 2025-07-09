@@ -89,6 +89,7 @@ const Z9Page: React.FC = () => {
     const [webContainer, setWebContainer] = useState<any>(null);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const [showProjectEditor, setShowProjectEditor] = useState(false);
 
     // Default Vite React project files
     const defaultFiles = [
@@ -270,6 +271,7 @@ body {
     // Load chat data when currentChatId changes
     useEffect(() => {
         if (currentChatId) {
+            setShowProjectEditor(true);
             loadChatData(currentChatId);
         }
     }, [currentChatId]);
@@ -310,20 +312,15 @@ body {
                 
                 // If no current chat and we have chats, select the first one
                 if (!currentChatId && chatData.length > 0) {
-                    setCurrentChatId(Number(chatData[0].id));
+                    // Don't auto-select, let user choose
+                    // setCurrentChatId(Number(chatData[0].id));
                 } 
-                // If no chats exist, create a new one
-                else if (chatData.length === 0) {
-                    await createNewChat();
-                }
+                // Don't auto-create chat, let user choose
             } else {
-                // If error or no chats, create a new one
-                await createNewChat();
+                // Don't auto-create on error
             }
         } catch (error) {
             console.error('Failed to load chats:', error);
-            // On error, try to create a new chat
-            await createNewChat();
         }
     };
 
@@ -335,6 +332,7 @@ body {
             if ("ok" in result) {
                 const newChat = result.ok;
                 setCurrentChatId(newChat.id);
+                setShowProjectEditor(true);
 
                 // Create initial project version with default files
                 await createInitialProjectVersion(newChat.id);
@@ -350,6 +348,17 @@ body {
         } catch (error) {
             console.error("Failed to create new chat:", error);
         }
+    };
+
+    const handleSelectProject = (chatId: string) => {
+        setCurrentChatId(Number(chatId));
+        setShowProjectEditor(true);
+        setShowChatSelector(false);
+    };
+
+    const handleNewProject = async () => {
+        await createNewChat();
+        setShowChatSelector(false);
     };
 
     const createInitialProjectVersion = async (chatId: number) => {
@@ -394,6 +403,118 @@ body {
         } catch (error) {
             console.error("Failed to create initial project version:", error);
         }
+    };
+
+    // Project Selection Screen Component
+    const ProjectSelectionScreen = () => (
+        <div className="h-screen bg-black text-white flex items-center justify-center">
+            <div className="max-w-4xl mx-auto px-6 text-center">
+                <div className="mb-8">
+                    <Zap className="w-16 h-16 text-purple-glow mx-auto mb-6" />
+                    <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-purple-400 via-purple-glow to-purple-600 bg-clip-text text-transparent">
+                        Z9 AI Assistant
+                    </h1>
+                    <p className="text-xl text-gray-300 mb-8">
+                        Create stunning React applications with the power of AI
+                    </p>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+                    {/* Create New Project */}
+                    <div 
+                        onClick={handleNewProject}
+                        className="bg-gray-900 border border-gray-800 rounded-xl p-8 hover:border-purple-glow hover:shadow-glow transition-all cursor-pointer group"
+                    >
+                        <div className="text-purple-glow mb-4 group-hover:scale-110 transition-transform">
+                            <Plus className="w-12 h-12 mx-auto" />
+                        </div>
+                        <h3 className="text-xl font-semibold mb-2">New Project</h3>
+                        <p className="text-gray-400">
+                            Start fresh with a new React application
+                        </p>
+                    </div>
+
+                    {/* Open Existing Project */}
+                    <div 
+                        onClick={() => setShowChatSelector(true)}
+                        className="bg-gray-900 border border-gray-800 rounded-xl p-8 hover:border-purple-glow hover:shadow-glow transition-all cursor-pointer group"
+                    >
+                        <div className="text-purple-glow mb-4 group-hover:scale-110 transition-transform">
+                            <MessageSquare className="w-12 h-12 mx-auto" />
+                        </div>
+                        <h3 className="text-xl font-semibold mb-2">Open Project</h3>
+                        <p className="text-gray-400">
+                            Continue working on an existing project
+                        </p>
+                        {chats.length > 0 && (
+                            <div className="mt-3 text-sm text-purple-400">
+                                {chats.length} project{chats.length !== 1 ? 's' : ''} available
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Recent Projects */}
+                {chats.length > 0 && (
+                    <div className="mt-12">
+                        <h2 className="text-2xl font-semibold mb-6">Recent Projects</h2>
+                        <div className="grid gap-4 max-w-3xl mx-auto">
+                            {chats.slice(0, 3).map((chat) => (
+                                <div
+                                    key={chat.id}
+                                    onClick={() => handleSelectProject(chat.id)}
+                                    className="bg-gray-900 border border-gray-800 rounded-lg p-4 hover:border-gray-600 hover:bg-gray-800 transition-all cursor-pointer flex items-center justify-between"
+                                >
+                                    <div className="flex items-center space-x-3">
+                                        <MessageSquare className="w-5 h-5 text-gray-400" />
+                                        <div>
+                                            <h3 className="font-medium">{chat.name}</h3>
+                                            <p className="text-sm text-gray-400">
+                                                {formatTimestamp(chat.timestamp)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <Button variant="ghost" size="sm">
+                                        Open
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                        {chats.length > 3 && (
+                            <Button 
+                                variant="outline" 
+                                className="mt-4"
+                                onClick={() => setShowChatSelector(true)}
+                            >
+                                View All Projects ({chats.length})
+                            </Button>
+                        )}
+                    </div>
+                )}
+
+                {/* Back to Home */}
+                <div className="mt-12">
+                    <Button variant="ghost" asChild>
+                        <Link to="/">
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Back to Home
+                        </Link>
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+
+    const formatTimestamp = (date: Date) => {
+        const now = new Date();
+        const diffInHours = Math.floor(
+            (now.getTime() - date.getTime()) / (1000 * 60 * 60)
+        );
+
+        if (diffInHours < 1) return "Just now";
+        if (diffInHours < 24) return `${diffInHours}h ago`;
+        if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d ago`;
+        return date.toLocaleDateString();
     };
 
     const loadChatData = async (chatId: number) => {
@@ -864,6 +985,25 @@ This is a placeholder response. The actual implementation will connect to Azure 
         );
     }
 
+    // Show project selection screen if no project is selected
+    if (!showProjectEditor || !currentChatId) {
+        return (
+            <>
+                {/* Chat Selector Popup */}
+                {showChatSelector && (
+                    <ChatSidebar
+                        chats={chats}
+                        currentChat={currentChatId?.toString() || ""}
+                        onSelectChat={handleSelectProject}
+                        onClose={() => setShowChatSelector(false)}
+                        onNewProject={handleNewProject}
+                    />
+                )}
+                <ProjectSelectionScreen />
+            </>
+        );
+    }
+
     return (
         <div className="h-screen bg-black text-white flex">
             {/* New File Dialog */}
@@ -939,9 +1079,9 @@ This is a placeholder response. The actual implementation will connect to Azure 
                 <ChatSidebar
                     chats={chats}
                     currentChat={currentChatId?.toString() || ""}
-                    onSelectChat={(chatId) => setCurrentChatId(Number(chatId))}
+                    onSelectChat={handleSelectProject}
                     onClose={() => setShowChatSelector(false)}
-                    onNewProject={createNewChat}
+                    onNewProject={handleNewProject}
                 />
             )}
 
@@ -961,15 +1101,20 @@ This is a placeholder response. The actual implementation will connect to Azure 
                 {/* Header */}
                 <div className="border-b border-gray-800 p-4 flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                        <Button variant="ghost" size="icon" asChild>
-                            <Link to="/">
-                                <ArrowLeft className="w-5 h-5" />
-                            </Link>
+                        <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => {
+                                setShowProjectEditor(false);
+                                setCurrentChatId(null);
+                            }}
+                        >
+                            <ArrowLeft className="w-5 h-5" />
                         </Button>
                         <div className="flex items-center space-x-2">
                             <Zap className="w-6 h-6 text-purple-glow" />
                             <h1 className="text-xl font-semibold">
-                                Z9 AI Assistant
+                                {chats.find(c => c.id === currentChatId?.toString())?.name || 'Z9 AI Assistant'}
                             </h1>
                         </div>
                     </div>
@@ -977,7 +1122,7 @@ This is a placeholder response. The actual implementation will connect to Azure 
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={createNewChat}
+                            onClick={handleNewProject}
                         >
                             <Plus className="w-4 h-4 mr-1" />
                             New

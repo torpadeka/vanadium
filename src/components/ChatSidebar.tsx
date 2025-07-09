@@ -14,6 +14,7 @@ interface ChatSidebarProps {
     currentChat: string;
     onSelectChat: (chatId: string) => void;
     onClose: () => void;
+    onNewProject?: () => void;
 }
 
 const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -21,6 +22,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     currentChat,
     onSelectChat,
     onClose,
+    onNewProject,
 }) => {
     const formatTimestamp = (date: Date) => {
         const now = new Date();
@@ -53,7 +55,14 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
                 {/* New Chat Button */}
                 <div className="p-4 border-b border-gray-800">
-                    <Button className="w-full" size="lg">
+                    <Button 
+                        className="w-full" 
+                        size="lg"
+                        onClick={() => {
+                            onNewProject?.();
+                            onClose();
+                        }}
+                    >
                         <Plus className="w-4 h-4 mr-2" />
                         New Project
                     </Button>

@@ -2,12 +2,35 @@ import React, { useEffect, useRef } from "react";
 
 interface PreviewPaneProps {
     code: string;
+    webContainer?: any;
 }
 
-const PreviewPane: React.FC<PreviewPaneProps> = ({ code }) => {
+const PreviewPane: React.FC<PreviewPaneProps> = ({ code, webContainer }) => {
     const iframeRef = useRef<HTMLIFrameElement>(null);
 
     useEffect(() => {
+        // Use WebContainer if available, otherwise fallback to iframe
+        if (webContainer) {
+            initializeWebContainerPreview();
+        } else {
+            initializeIframePreview();
+        }
+    }, [code, webContainer]);
+
+    const initializeWebContainerPreview = async () => {
+        if (!webContainer) return;
+        
+        try {
+            // TODO: Implement WebContainer-based preview
+            // For now, fallback to iframe
+            initializeIframePreview();
+        } catch (error) {
+            console.warn("WebContainer preview failed, falling back to iframe:", error);
+            initializeIframePreview();
+        }
+    };
+
+    const initializeIframePreview = () => {
         if (!iframeRef.current) return;
 
         const iframe = iframeRef.current;
@@ -80,16 +103,21 @@ const PreviewPane: React.FC<PreviewPaneProps> = ({ code }) => {
         doc.open();
         doc.write(htmlContent);
         doc.close();
-    }, [code]);
+    };
 
     return (
-        <div className="h-full bg-white">
+        <div className="h-full bg-white relative">
             <iframe
                 ref={iframeRef}
                 className="w-full h-full border-0"
                 title="Preview"
                 sandbox="allow-scripts"
             />
+            {!webContainer && (
+                <div className="absolute top-2 right-2 bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">
+                    Iframe Preview
+                </div>
+            )}
         </div>
     );
 };

@@ -948,7 +948,7 @@ This is a placeholder response. The actual implementation will connect to Azure 
                 );
             case "preview":
                 return selectedFile ? (
-                    <PreviewPane code={selectedFile.content} />
+                    <PreviewPane code={selectedFile.content} webContainer={webContainer} />
                 ) : (
                     <div className="flex items-center justify-center h-full text-gray-500">
                         Select a file to preview

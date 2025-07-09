@@ -3,8 +3,8 @@ import dotenv from "dotenv";
 import { defineConfig } from "vite";
 import environment from "vite-plugin-environment";
 import forwardTrailingSlash from "./forward-trailing-slash";
-import path from "path"
-import tailwindcss from "@tailwindcss/vite"
+import path from "path";
+import tailwindcss from "@tailwindcss/vite";
 
 dotenv.config();
 
@@ -28,6 +28,10 @@ export default defineConfig({
                 changeOrigin: true,
             },
         },
+        headers: {
+            "Cross-Origin-Embedder-Policy": "require-corp",
+            "Cross-Origin-Opener-Policy": "same-origin",
+        },
     },
     plugins: [
         react(),
@@ -38,8 +42,8 @@ export default defineConfig({
     ],
     cacheDir: "../node_modules/.vite",
     resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
+        alias: {
+            "@": path.resolve(__dirname, "./src"),
+        },
     },
-  },
 });

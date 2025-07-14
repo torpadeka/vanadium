@@ -270,18 +270,33 @@ body {
     ];
 
     useEffect(() => {
+        let mounted = true;
+
         const initializeWebContainer = async () => {
-            if (!webContainerInstance) {
-                console.log("Booting WebContainer...");
-                try {
-                    webContainerInstance = await WebContainer.boot();
-                    setWebContainer(webContainerInstance);
-                    console.log(
-                        "WebContainer initialized:",
-                        webContainerInstance
-                    );
-                } catch (error) {
-                    console.error("Failed to boot WebContainer:", error);
+            if (webContainer) {
+                console.log(
+                    "WebContainer already initialized, reusing instance"
+                );
+                return;
+            }
+
+            console.log("Booting WebContainer...");
+            try {
+                const instance = await WebContainer.boot();
+                if (mounted) {
+                    setWebContainer(instance);
+                    console.log("WebContainer initialized:", instance);
+                    await instance.fs.mkdir("src", { recursive: true });
+                    console.log("Created src directory in WebContainer");
+
+                    for (const file of defaultFiles) {
+                        await instance.fs.writeFile(file.name, file.content);
+                        console.log(`Wrote file: ${file.name}`);
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to boot WebContainer:", error);
+                if (mounted) {
                     setMessages((prev) => [
                         ...prev,
                         {
@@ -301,12 +316,13 @@ body {
         }
 
         return () => {
-            // Cleanup if needed (e.g., terminate WebContainer)
-            if (webContainerInstance) {
-                webContainerInstance.teardown(); // Uncomment if teardown is supported
+            mounted = false;
+            if (webContainer) {
+                webContainer.teardown();
+                console.log("WebContainer torn down");
             }
         };
-    }, [isAuthenticated, principal]);
+    }, [isAuthenticated, principal]); // Removed webContainer from dependencies
 
     useEffect(() => {
         const initializeApp = async () => {
@@ -337,6 +353,7 @@ body {
     const buildFileTree = () => {
         const tree: FileTreeItem[] = [];
         const folderMap = new Map<number, FileTreeItem>();
+        const fileMap = new Map<number, FileTreeItem>();
 
         // Create folder items
         projectFolders.forEach((folder) => {
@@ -345,13 +362,16 @@ body {
                 name: folder.name,
                 type: "folder",
                 parentId: folder.parentId?.[0],
-                children: [],
+                children: [], // Ensure children is always initialized
                 isExpanded: expandedFolders.has(folder.id),
             };
             folderMap.set(folder.id, folderItem);
+            console.log(
+                `Folder: ${folder.name}, id: ${folder.id}, parentId: ${folder.parentId?.[0] || "none"}`
+            );
         });
 
-        // Create file items and organize tree
+        // Create file items and link to folders
         projectFiles.forEach((file) => {
             const fileItem: FileTreeItem = {
                 id: file.id,
@@ -360,18 +380,28 @@ body {
                 content: file.content,
                 parentId: file.folderId?.[0],
             };
+            fileMap.set(file.id, fileItem);
+            console.log(
+                `File: ${file.name}, id: ${file.id}, folderId: ${file.folderId?.[0] || "none"}`
+            );
 
             if (file.folderId?.[0]) {
                 const parentFolder = folderMap.get(file.folderId[0]);
                 if (parentFolder) {
-                    parentFolder.children!.push(fileItem);
+                    parentFolder.children = parentFolder.children || [];
+                    parentFolder.children.push(fileItem);
+                } else {
+                    console.warn(
+                        `No folder found for file ${file.name} with folderId ${file.folderId?.[0]}`
+                    );
+                    tree.push(fileItem);
                 }
             } else {
                 tree.push(fileItem);
             }
         });
 
-        // Add folders to tree
+        // Build the tree by adding folders
         projectFolders.forEach((folder) => {
             const folderItem = folderMap.get(folder.id);
             if (folderItem && !folder.parentId?.[0]) {
@@ -379,12 +409,31 @@ body {
             } else if (folderItem && folder.parentId?.[0]) {
                 const parentFolder = folderMap.get(folder.parentId[0]);
                 if (parentFolder) {
-                    parentFolder.children!.push(folderItem);
+                    parentFolder.children = parentFolder.children || [];
+                    parentFolder.children.push(folderItem);
+                } else {
+                    console.warn(
+                        `No parent folder found for folder ${folder.name} with parentId ${folder.parentId?.[0]}`
+                    );
                 }
             }
         });
 
+        // Sort children for consistency
+        tree.forEach((item) => {
+            if (item.children) {
+                item.children.sort((a, b) => a.name.localeCompare(b.name));
+            }
+        });
+
         setFileTree(tree);
+        console.log(
+            "Built file tree with children:",
+            tree.map((item) => ({
+                name: item.name,
+                children: item.children?.map((c) => c.name) || [],
+            }))
+        );
     };
 
     // Build file tree when files/folders change
@@ -617,7 +666,7 @@ body {
 
             if ("ok" in filesResult) {
                 setProjectFiles(filesResult.ok);
-                // Set first file as selected if none selected
+                console.log("Loaded files:", filesResult.ok); // Debug log
                 if (!selectedFile && filesResult.ok.length > 0) {
                     setSelectedFile(filesResult.ok[0]);
                 }
@@ -625,6 +674,7 @@ body {
 
             if ("ok" in foldersResult) {
                 setProjectFolders(foldersResult.ok);
+                console.log("Loaded folders:", foldersResult.ok); // Debug log
             }
         } catch (error) {
             console.error("Failed to load project files:", error);
@@ -633,7 +683,6 @@ body {
 
     const createInitialProjectVersion = async (chatId: number) => {
         try {
-            // Create project version
             const versionResult = await chatHandler.createProjectVersion(
                 chatId,
                 1,
@@ -645,7 +694,6 @@ body {
                 setCurrentVersion(version);
                 console.log("Project version created:", version.id);
 
-                // Create src folder
                 let srcFolderId: number | undefined;
                 const srcFolderResult = await chatHandler.createFolder(
                     version.id,
@@ -663,13 +711,14 @@ body {
                     throw new Error("Failed to create src folder");
                 }
 
-                // Create default files in the canister and WebContainer
+                // In createInitialProjectVersion, update the file loop
                 for (const file of defaultFiles) {
                     const isInSrc = file.name.startsWith("src/");
                     const fileName = isInSrc
                         ? file.name.replace("src/", "")
                         : file.name;
                     const folderId = isInSrc ? srcFolderId : undefined;
+                    const webContainerPath = file.name; // Use original path
 
                     const fileResult = await chatHandler.createFile(
                         version.id,
@@ -678,16 +727,15 @@ body {
                         file.content
                     );
                     if ("ok" in fileResult) {
-                        console.log(`File created: ${fileName}`);
-                        // Write file to WebContainer
+                        console.log(`File created in canister: ${fileName}`);
                         if (webContainer) {
                             try {
                                 await webContainer.fs.writeFile(
-                                    isInSrc ? `src/${fileName}` : fileName,
+                                    webContainerPath,
                                     file.content
                                 );
                                 console.log(
-                                    `File written to WebContainer: ${fileName}`
+                                    `File written to WebContainer: ${webContainerPath}`
                                 );
                             } catch (error) {
                                 console.error(
@@ -705,7 +753,6 @@ body {
                     }
                 }
 
-                // Load project files to update the UI
                 await loadProjectFiles(version.id);
             } else {
                 console.error(
@@ -726,7 +773,7 @@ body {
                     timestamp: new Date(),
                 },
             ]);
-            throw error; // Propagate error to createNewChat
+            throw error;
         }
     };
 

@@ -1,1630 +1,426 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { ChatSystemHandler } from "@/handler/ChatSystemHandler";
-import { Principal } from "@dfinity/principal";
+import React, { useState, useEffect } from "react";
 import { useUser } from "@/context/AuthContext";
+import { ChatSystemHandler } from "@/handler/ChatSystemHandler";
+import {
+    Chat,
+    File as FileType,
+    Folder,
+    Message,
+    ProjectVersion,
+} from "@/declarations/chat_system_service/chat_system_service.did";
 
-interface Message {
-  type: "success" | "error";
-  content: string;
-}
+const TestAPIPage: React.FC = () => {
+    const { user, principal } = useUser();
+    const [chatHandler] = useState(() => new ChatSystemHandler());
+    const [chats, setChats] = useState<Chat[]>([]);
+    const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [files, setFiles] = useState<FileType[]>([]);
+    const [folders, setFolders] = useState<Folder[]>([]);
+    const [projectVersions, setProjectVersions] = useState<ProjectVersion[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string>("");
 
-export default function TestAPIPage() {
-  const { isAuthenticated, principal, login } = useUser();
-  const [handler] = useState(() => new ChatSystemHandler());
+    useEffect(() => {
+        if (principal) {
+            loadChats();
+        }
+    }, [principal]);
 
-  // Chat section states
-  const [chat, setChat] = useState({
-    id: "",
-    title: "",
-    userId: "",
-    newTitle: "",
-  });
+    const loadChats = async () => {
+        if (!principal) return;
+        
+        setLoading(true);
+        setError("");
+        
+        try {
+            const result = await chatHandler.getAllChatByUserId(principal);
+            if ("ok" in result) {
+                setChats(result.ok);
+                console.log("Loaded chats:", result.ok);
+            } else {
+                setError(`Failed to load chats: ${result.err}`);
+            }
+        } catch (err) {
+            setError(`Error loading chats: ${(err as Error).message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  // File section states
-  const [file, setFile] = useState({
-    id: "",
-    versionId: "",
-    folderId: "",
-    name: "",
-    content: "",
-    newName: "",
-    newContent: "",
-    newFolderId: "",
-  });
+    const loadChatData = async (chat: Chat) => {
+        setSelectedChat(chat);
+        setLoading(true);
+        setError("");
 
-  // Folder section states
-  const [folder, setFolder] = useState({
-    id: "",
-    versionId: "",
-    name: "",
-    parentId: "",
-    newName: "",
-    newParentId: "",
-  });
+        try {
+            // Load messages
+            const messagesResult = await chatHandler.getAllMessageByChatId(Number(chat.id));
+            if ("ok" in messagesResult) {
+                setMessages(messagesResult.ok);
+            }
 
-  // Message section states
-  const [message, setMessage] = useState({
-    id: "",
-    chatId: "",
-    content: "",
-    referencedVersion: "",
-    newContent: "",
-  });
+            // Load project versions
+            const versionsResult = await chatHandler.getAllProjectVersionByChatId(Number(chat.id));
+            if ("ok" in versionsResult) {
+                setProjectVersions(versionsResult.ok);
+                
+                // If there are versions, load files and folders for the latest one
+                if (versionsResult.ok.length > 0) {
+                    const latestVersion = versionsResult.ok[versionsResult.ok.length - 1];
+                    
+                    const [filesResult, foldersResult] = await Promise.all([
+                        chatHandler.getAllFileByProjectVersionId(Number(latestVersion.id)),
+                        chatHandler.getAllFolderByProjectVersionId(Number(latestVersion.id))
+                    ]);
 
-  // Project Version section states
-  const [projectVersion, setProjectVersion] = useState({
-    id: "",
-    chatId: "",
-    versionNumber: "",
-    snapshot: "",
-  });
-
-  // Message states for each section
-  const [chatMessage, setChatMessage] = useState<Message | null>(null);
-  const [fileMessage, setFileMessage] = useState<Message | null>(null);
-  const [folderMessage, setFolderMessage] = useState<Message | null>(null);
-  const [messageMessage, setMessageMessage] = useState<Message | null>(null);
-  const [projectVersionMessage, setProjectVersionMessage] =
-    useState<Message | null>(null);
-
-  useEffect(() => {
-    console.log(principal);
-  }, [principal]);
-
-  const handleResult = (
-    res: any,
-    setMessage: (msg: Message | null) => void
-  ) => {
-    // Custom replacer to handle BigInt serialization
-    const replacer = (key: string, value: any) =>
-      typeof value === "bigint" ? value.toString() : value;
-
-    setMessage({
-      type: "success",
-      content: JSON.stringify(res, replacer, 2),
-    });
-  };
-
-  const handleError = (
-    error: any,
-    setMessage: (msg: Message | null) => void
-  ) => {
-    console.error(error);
-    setMessage({
-      type: "error",
-      content: `Error: ${error.message || error}`,
-    });
-  };
-
-  const MessageDisplay = ({ message }: { message: Message | null }) => {
-    if (!message) return null;
-
-    return (
-      <div
-        className={`mt-3 p-3 rounded-lg border ${
-          message.type === "success"
-            ? "bg-green-900/20 border-green-700 text-green-300"
-            : "bg-red-900/20 border-red-700 text-red-300"
-        }`}
-      >
-        <pre className="text-xs whitespace-pre-wrap overflow-auto max-h-32">
-          {message.content}
-        </pre>
-      </div>
-    );
-  };
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <Card className="w-full max-w-md bg-gray-800 border-gray-700">
-          <CardHeader className="text-center">
-            <CardTitle className="text-xl text-white">
-              Authentication Required
-            </CardTitle>
-            <p className="text-sm text-gray-400">
-              Please login to access the Chat System API test page
-            </p>
-          </CardHeader>
-          <CardContent className="text-center">
-            <Button onClick={login} size="lg" className="w-full">
-              Login to Continue
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-900">
-      <div className="container mx-auto p-6 max-w-7xl">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">
-            Chat System API Test Console
-          </h1>
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="bg-gray-700 text-gray-300">
-              Principal:
-            </Badge>
-            <code className="text-sm bg-gray-800 text-gray-300 px-2 py-1 rounded border border-gray-600">
-              {principal?.toString()}
-            </code>
-            <Button
-              onClick={() => {
-                if (principal) {
-                  navigator.clipboard.writeText(principal.toString());
+                    if ("ok" in filesResult) {
+                        setFiles(filesResult.ok);
+                    }
+                    if ("ok" in foldersResult) {
+                        setFolders(foldersResult.ok);
+                    }
                 }
-              }}
-              variant="outline"
-              size="sm"
-              className="ml-2 bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
-            >
-              Copy
-            </Button>
-          </div>
-        </div>
+            }
+        } catch (err) {
+            setError(`Error loading chat data: ${(err as Error).message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {/* Chat Methods */}
-          <Card className="h-fit bg-gray-800 border-gray-700">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-white">
-                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                Chat Management
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Create Chat */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-gray-300">
-                  Create New Chat
-                </h4>
-                <div className="space-y-2">
-                  <Label htmlFor="chat-title" className="text-gray-300">
-                    Chat Title
-                  </Label>
-                  <Input
-                    id="chat-title"
-                    value={chat.title}
-                    onChange={(e) => {
-                      setChat((prev) => ({ ...prev, title: e.target.value }));
-                      setChatMessage(null);
-                    }}
-                    placeholder="Enter chat title"
-                    className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                  />
-                  <Button
-                    onClick={async () => {
-                      setChatMessage(null);
-                      try {
-                        const result = await handler.createChat(chat.title);
-                        handleResult(result, setChatMessage);
-                      } catch (error) {
-                        handleError(error, setChatMessage);
-                      }
-                    }}
-                    className="w-full"
-                    disabled={!chat.title.trim()}
-                  >
-                    Create Chat
-                  </Button>
-                </div>
-              </div>
+    const createTestProject = async () => {
+        if (!principal) return;
 
-              <Separator />
+        setLoading(true);
+        setError("");
 
-              {/* Get Chat */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-gray-300">
-                  Get Chat by ID
-                </h4>
-                <div className="space-y-2">
-                  <Label htmlFor="chat-id" className="text-gray-300">
-                    Chat ID
-                  </Label>
-                  <Input
-                    id="chat-id"
-                    value={chat.id}
-                    onChange={(e) => {
-                      setChat((prev) => ({ ...prev, id: e.target.value }));
-                      setChatMessage(null);
-                    }}
-                    placeholder="Enter chat ID"
-                    type="number"
-                    className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                  />
-                  <Button
-                    onClick={async () => {
-                      setChatMessage(null);
-                      try {
-                        const result = await handler.getChat(Number(chat.id));
-                        handleResult(result, setChatMessage);
-                      } catch (error) {
-                        handleError(error, setChatMessage);
-                      }
-                    }}
-                    className="w-full"
-                    disabled={!chat.id}
-                  >
-                    Get Chat
-                  </Button>
-                </div>
-              </div>
+        try {
+            // Create new chat
+            const chatResult = await chatHandler.createChat("Test Project");
+            if ("err" in chatResult) {
+                throw new Error(chatResult.err);
+            }
 
-              <Separator />
+            const newChat = chatResult.ok;
+            const chatId = Number(newChat.id);
 
-              {/* Get All Chats by User */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-gray-300">
-                  Get All Chats by User
-                </h4>
-                <div className="space-y-2">
-                  <Label htmlFor="user-id" className="text-gray-300">
-                    User Principal
-                  </Label>
-                  <Input
-                    id="user-id"
-                    value={chat.userId}
-                    onChange={(e) => {
-                      setChat((prev) => ({ ...prev, userId: e.target.value }));
-                      setChatMessage(null);
-                    }}
-                    placeholder="Enter user principal"
-                    className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                  />
-                  <Button
-                    onClick={async () => {
-                      setChatMessage(null);
-                      try {
-                        const result = await handler.getAllChatByUserId(
-                          Principal.fromText(chat.userId)
-                        );
-                        handleResult(result, setChatMessage);
-                      } catch (error) {
-                        handleError(error, setChatMessage);
-                      }
-                    }}
-                    className="w-full"
-                    disabled={!chat.userId.trim()}
-                  >
-                    Get All Chats
-                  </Button>
-                </div>
-              </div>
+            // Create project version
+            const versionResult = await chatHandler.createProjectVersion(
+                chatId,
+                1,
+                "Initial test project setup"
+            );
+            if ("err" in versionResult) {
+                throw new Error(versionResult.err);
+            }
 
-              <Separator />
+            const version = versionResult.ok;
+            const versionId = Number(version.id);
 
-              {/* Update Chat */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-gray-300">
-                  Update Chat
-                </h4>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label htmlFor="update-chat-id" className="text-gray-300">
-                      Chat ID
-                    </Label>
-                    <Input
-                      id="update-chat-id"
-                      value={chat.id}
-                      onChange={(e) => {
-                        setChat((prev) => ({ ...prev, id: e.target.value }));
-                        setChatMessage(null);
-                      }}
-                      placeholder="Chat ID"
-                      type="number"
-                      className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="new-title" className="text-gray-300">
-                      New Title
-                    </Label>
-                    <Input
-                      id="new-title"
-                      value={chat.newTitle}
-                      onChange={(e) => {
-                        setChat((prev) => ({
-                          ...prev,
-                          newTitle: e.target.value,
-                        }));
-                        setChatMessage(null);
-                      }}
-                      placeholder="New title"
-                      className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                    />
-                  </div>
-                </div>
-                <Button
-                  onClick={async () => {
-                    setChatMessage(null);
-                    try {
-                      const result = await handler.updateChat(
-                        Number(chat.id),
-                        chat.newTitle
-                      );
-                      handleResult(result, setChatMessage);
-                    } catch (error) {
-                      handleError(error, setChatMessage);
-                    }
-                  }}
-                  className="w-full"
-                  disabled={!chat.id || !chat.newTitle.trim()}
-                >
-                  Update Chat
-                </Button>
-              </div>
+            // Create src folder
+            const srcFolderResult = await chatHandler.createFolder(versionId, "src");
+            if ("err" in srcFolderResult) {
+                throw new Error(srcFolderResult.err);
+            }
+            const srcFolderId = Number(srcFolderResult.ok.id);
 
-              <Separator />
+            // Create components folder inside src
+            const componentsFolderResult = await chatHandler.createFolder(versionId, "components", srcFolderId);
+            if ("err" in componentsFolderResult) {
+                throw new Error(componentsFolderResult.err);
+            }
+            const componentsFolderId = Number(componentsFolderResult.ok.id);
 
-              {/* Delete Chat */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-gray-300">
-                  Delete Chat
-                </h4>
-                <div className="space-y-2">
-                  <Label htmlFor="delete-chat-id" className="text-gray-300">
-                    Chat ID
-                  </Label>
-                  <Input
-                    id="delete-chat-id"
-                    value={chat.id}
-                    onChange={(e) => {
-                      setChat((prev) => ({ ...prev, id: e.target.value }));
-                      setChatMessage(null);
-                    }}
-                    placeholder="Enter chat ID to delete"
-                    type="number"
-                    className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                  />
-                  <Button
-                    onClick={async () => {
-                      setChatMessage(null);
-                      try {
-                        const result = await handler.deleteChat(
-                          Number(chat.id)
-                        );
-                        handleResult(result, setChatMessage);
-                      } catch (error) {
-                        handleError(error, setChatMessage);
-                      }
-                    }}
-                    variant="destructive"
-                    className="w-full"
-                    disabled={!chat.id}
-                  >
-                    Delete Chat
-                  </Button>
-                </div>
-              </div>
+            // Create test files
+            const testFiles = [
+                {
+                    name: "App.jsx",
+                    content: `import React from 'react';
+import Header from './components/Header';
 
-              <MessageDisplay message={chatMessage} />
-            </CardContent>
-          </Card>
-
-          {/* File Methods */}
-          <Card className="h-fit bg-gray-800 border-gray-700">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-white">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                File Management
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Create File */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-gray-300">
-                  Create New File
-                </h4>
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label
-                        htmlFor="file-version-id"
-                        className="text-gray-300"
-                      >
-                        Version ID
-                      </Label>
-                      <Input
-                        id="file-version-id"
-                        value={file.versionId}
-                        onChange={(e) => {
-                          setFile((prev) => ({
-                            ...prev,
-                            versionId: e.target.value,
-                          }));
-                          setFileMessage(null);
-                        }}
-                        placeholder="Version ID"
-                        type="number"
-                        className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="file-folder-id" className="text-gray-300">
-                        Folder ID (Optional)
-                      </Label>
-                      <Input
-                        id="file-folder-id"
-                        value={file.folderId}
-                        onChange={(e) => {
-                          setFile((prev) => ({
-                            ...prev,
-                            folderId: e.target.value,
-                          }));
-                          setFileMessage(null);
-                        }}
-                        placeholder="Folder ID"
-                        type="number"
-                        className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="file-name" className="text-gray-300">
-                      File Name
-                    </Label>
-                    <Input
-                      id="file-name"
-                      value={file.name}
-                      onChange={(e) => {
-                        setFile((prev) => ({ ...prev, name: e.target.value }));
-                        setFileMessage(null);
-                      }}
-                      placeholder="Enter file name"
-                      className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="file-content" className="text-gray-300">
-                      File Content
-                    </Label>
-                    <Textarea
-                      id="file-content"
-                      value={file.content}
-                      onChange={(e) => {
-                        setFile((prev) => ({
-                          ...prev,
-                          content: e.target.value,
-                        }));
-                        setFileMessage(null);
-                      }}
-                      placeholder="Enter file content"
-                      rows={3}
-                      className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                    />
-                  </div>
-                  <Button
-                    onClick={async () => {
-                      setFileMessage(null);
-                      try {
-                        const result = await handler.createFile(
-                          Number(file.versionId),
-                          Number(file.folderId) || 0,
-                          file.name,
-                          file.content
-                        );
-                        handleResult(result, setFileMessage);
-                      } catch (error) {
-                        handleError(error, setFileMessage);
-                      }
-                    }}
-                    className="w-full"
-                    disabled={!file.versionId || !file.name.trim()}
-                  >
-                    Create File
-                  </Button>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Get File */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-gray-300">
-                  Get File by ID
-                </h4>
-                <div className="space-y-2">
-                  <Label htmlFor="get-file-id" className="text-gray-300">
-                    File ID
-                  </Label>
-                  <Input
-                    id="get-file-id"
-                    value={file.id}
-                    onChange={(e) => {
-                      setFile((prev) => ({ ...prev, id: e.target.value }));
-                      setFileMessage(null);
-                    }}
-                    placeholder="Enter file ID"
-                    type="number"
-                    className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                  />
-                  <Button
-                    onClick={async () => {
-                      setFileMessage(null);
-                      try {
-                        const result = await handler.getFile(Number(file.id));
-                        handleResult(result, setFileMessage);
-                      } catch (error) {
-                        handleError(error, setFileMessage);
-                      }
-                    }}
-                    className="w-full"
-                    disabled={!file.id}
-                  >
-                    Get File
-                  </Button>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Get All Files */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-gray-300">
-                  Get All Files by Version
-                </h4>
-                <div className="space-y-2">
-                  <Label htmlFor="files-version-id" className="text-gray-300">
-                    Project Version ID
-                  </Label>
-                  <Input
-                    id="files-version-id"
-                    value={file.versionId}
-                    onChange={(e) => {
-                      setFile((prev) => ({
-                        ...prev,
-                        versionId: e.target.value,
-                      }));
-                      setFileMessage(null);
-                    }}
-                    placeholder="Enter version ID"
-                    type="number"
-                    className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                  />
-                  <Button
-                    onClick={async () => {
-                      setFileMessage(null);
-                      try {
-                        const result =
-                          await handler.getAllFileByProjectVersionId(
-                            Number(file.versionId)
-                          );
-                        handleResult(result, setFileMessage);
-                      } catch (error) {
-                        handleError(error, setFileMessage);
-                      }
-                    }}
-                    className="w-full"
-                    disabled={!file.versionId}
-                  >
-                    Get All Files
-                  </Button>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Update File */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-gray-300">
-                  Update File
-                </h4>
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label htmlFor="update-file-id" className="text-gray-300">
-                        File ID
-                      </Label>
-                      <Input
-                        id="update-file-id"
-                        value={file.id}
-                        onChange={(e) => {
-                          setFile((prev) => ({ ...prev, id: e.target.value }));
-                          setFileMessage(null);
-                        }}
-                        placeholder="File ID"
-                        type="number"
-                        className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                      />
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="update-folder-id"
-                        className="text-gray-300"
-                      >
-                        New Folder ID
-                      </Label>
-                      <Input
-                        id="update-folder-id"
-                        value={file.newFolderId}
-                        onChange={(e) => {
-                          setFile((prev) => ({
-                            ...prev,
-                            newFolderId: e.target.value,
-                          }));
-                          setFileMessage(null);
-                        }}
-                        placeholder="New folder ID"
-                        type="number"
-                        className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="update-file-name" className="text-gray-300">
-                      New File Name
-                    </Label>
-                    <Input
-                      id="update-file-name"
-                      value={file.newName}
-                      onChange={(e) => {
-                        setFile((prev) => ({
-                          ...prev,
-                          newName: e.target.value,
-                        }));
-                        setFileMessage(null);
-                      }}
-                      placeholder="New file name"
-                      className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                    />
-                  </div>
-                  <div>
-                    <Label
-                      htmlFor="update-file-content"
-                      className="text-gray-300"
-                    >
-                      New File Content
-                    </Label>
-                    <Textarea
-                      id="update-file-content"
-                      value={file.newContent}
-                      onChange={(e) => {
-                        setFile((prev) => ({
-                          ...prev,
-                          newContent: e.target.value,
-                        }));
-                        setFileMessage(null);
-                      }}
-                      placeholder="New file content"
-                      rows={3}
-                      className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                    />
-                  </div>
-                  <Button
-                    onClick={async () => {
-                      setFileMessage(null);
-                      try {
-                        const result = await handler.updateFile(
-                          Number(file.id),
-                          Number(file.newFolderId) || undefined,
-                          file.newName || undefined,
-                          file.newContent || undefined
-                        );
-                        handleResult(result, setFileMessage);
-                      } catch (error) {
-                        handleError(error, setFileMessage);
-                      }
-                    }}
-                    className="w-full"
-                    disabled={!file.id}
-                  >
-                    Update File
-                  </Button>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Delete File */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-gray-300">
-                  Delete File
-                </h4>
-                <div className="space-y-2">
-                  <Label htmlFor="delete-file-id" className="text-gray-300">
-                    File ID
-                  </Label>
-                  <Input
-                    id="delete-file-id"
-                    value={file.id}
-                    onChange={(e) => {
-                      setFile((prev) => ({ ...prev, id: e.target.value }));
-                      setFileMessage(null);
-                    }}
-                    placeholder="Enter file ID to delete"
-                    type="number"
-                    className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                  />
-                  <Button
-                    onClick={async () => {
-                      setFileMessage(null);
-                      try {
-                        const result = await handler.deleteFile(
-                          Number(file.id)
-                        );
-                        handleResult(result, setFileMessage);
-                      } catch (error) {
-                        handleError(error, setFileMessage);
-                      }
-                    }}
-                    variant="destructive"
-                    className="w-full"
-                    disabled={!file.id}
-                  >
-                    Delete File
-                  </Button>
-                </div>
-              </div>
-
-              <MessageDisplay message={fileMessage} />
-            </CardContent>
-          </Card>
-
-          {/* Folder Methods */}
-          <Card className="h-fit bg-gray-800 border-gray-700">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-white">
-                <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                Folder Management
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Create Folder */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-gray-300">
-                  Create New Folder
-                </h4>
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label
-                        htmlFor="folder-version-id"
-                        className="text-gray-300"
-                      >
-                        Version ID
-                      </Label>
-                      <Input
-                        id="folder-version-id"
-                        value={folder.versionId}
-                        onChange={(e) => {
-                          setFolder((prev) => ({
-                            ...prev,
-                            versionId: e.target.value,
-                          }));
-                          setFolderMessage(null);
-                        }}
-                        placeholder="Version ID"
-                        type="number"
-                        className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                      />
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="folder-parent-id"
-                        className="text-gray-300"
-                      >
-                        Parent Folder ID
-                      </Label>
-                      <Input
-                        id="folder-parent-id"
-                        value={folder.parentId}
-                        onChange={(e) => {
-                          setFolder((prev) => ({
-                            ...prev,
-                            parentId: e.target.value,
-                          }));
-                          setFolderMessage(null);
-                        }}
-                        placeholder="Parent ID (optional)"
-                        type="number"
-                        className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="folder-name" className="text-gray-300">
-                      Folder Name
-                    </Label>
-                    <Input
-                      id="folder-name"
-                      value={folder.name}
-                      onChange={(e) => {
-                        setFolder((prev) => ({
-                          ...prev,
-                          name: e.target.value,
-                        }));
-                        setFolderMessage(null);
-                      }}
-                      placeholder="Enter folder name"
-                      className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                    />
-                  </div>
-                  <Button
-                    onClick={async () => {
-                      setFolderMessage(null);
-                      try {
-                        const result = await handler.createFolder(
-                          Number(folder.versionId),
-                          folder.name,
-                          Number(folder.parentId) || undefined
-                        );
-                        handleResult(result, setFolderMessage);
-                      } catch (error) {
-                        handleError(error, setFolderMessage);
-                      }
-                    }}
-                    className="w-full"
-                    disabled={!folder.versionId || !folder.name.trim()}
-                  >
-                    Create Folder
-                  </Button>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Get Folder */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-gray-300">
-                  Get Folder by ID
-                </h4>
-                <div className="space-y-2">
-                  <Label htmlFor="get-folder-id" className="text-gray-300">
-                    Folder ID
-                  </Label>
-                  <Input
-                    id="get-folder-id"
-                    value={folder.id}
-                    onChange={(e) => {
-                      setFolder((prev) => ({ ...prev, id: e.target.value }));
-                      setFolderMessage(null);
-                    }}
-                    placeholder="Enter folder ID"
-                    type="number"
-                    className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                  />
-                  <Button
-                    onClick={async () => {
-                      setFolderMessage(null);
-                      try {
-                        const result = await handler.getFolder(
-                          Number(folder.id)
-                        );
-                        handleResult(result, setFolderMessage);
-                      } catch (error) {
-                        handleError(error, setFolderMessage);
-                      }
-                    }}
-                    className="w-full"
-                    disabled={!folder.id}
-                  >
-                    Get Folder
-                  </Button>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Get All Folders */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-gray-300">
-                  Get All Folders by Version
-                </h4>
-                <div className="space-y-2">
-                  <Label htmlFor="folders-version-id" className="text-gray-300">
-                    Project Version ID
-                  </Label>
-                  <Input
-                    id="folders-version-id"
-                    value={folder.versionId}
-                    onChange={(e) => {
-                      setFolder((prev) => ({
-                        ...prev,
-                        versionId: e.target.value,
-                      }));
-                      setFolderMessage(null);
-                    }}
-                    placeholder="Enter version ID"
-                    type="number"
-                    className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                  />
-                  <Button
-                    onClick={async () => {
-                      setFolderMessage(null);
-                      try {
-                        const result =
-                          await handler.getAllFolderByProjectVersionId(
-                            Number(folder.versionId)
-                          );
-                        handleResult(result, setFolderMessage);
-                      } catch (error) {
-                        handleError(error, setFolderMessage);
-                      }
-                    }}
-                    className="w-full"
-                    disabled={!folder.versionId}
-                  >
-                    Get All Folders
-                  </Button>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Update Folder */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-gray-300">
-                  Update Folder
-                </h4>
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label
-                        htmlFor="update-folder-id"
-                        className="text-gray-300"
-                      >
-                        Folder ID
-                      </Label>
-                      <Input
-                        id="update-folder-id"
-                        value={folder.id}
-                        onChange={(e) => {
-                          setFolder((prev) => ({
-                            ...prev,
-                            id: e.target.value,
-                          }));
-                          setFolderMessage(null);
-                        }}
-                        placeholder="Folder ID"
-                        type="number"
-                        className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                      />
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="update-parent-id"
-                        className="text-gray-300"
-                      >
-                        New Parent ID
-                      </Label>
-                      <Input
-                        id="update-parent-id"
-                        value={folder.newParentId}
-                        onChange={(e) => {
-                          setFolder((prev) => ({
-                            ...prev,
-                            newParentId: e.target.value,
-                          }));
-                          setFolderMessage(null);
-                        }}
-                        placeholder="New parent ID"
-                        type="number"
-                        className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label
-                      htmlFor="update-folder-name"
-                      className="text-gray-300"
-                    >
-                      New Folder Name
-                    </Label>
-                    <Input
-                      id="update-folder-name"
-                      value={folder.newName}
-                      onChange={(e) => {
-                        setFolder((prev) => ({
-                          ...prev,
-                          newName: e.target.value,
-                        }));
-                        setFolderMessage(null);
-                      }}
-                      placeholder="New folder name"
-                      className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                    />
-                  </div>
-                  <Button
-                    onClick={async () => {
-                      setFolderMessage(null);
-                      try {
-                        const result = await handler.updateFolder(
-                          Number(folder.id),
-                          folder.newName || undefined,
-                          Number(folder.newParentId) || undefined
-                        );
-                        handleResult(result, setFolderMessage);
-                      } catch (error) {
-                        handleError(error, setFolderMessage);
-                      }
-                    }}
-                    className="w-full"
-                    disabled={!folder.id}
-                  >
-                    Update Folder
-                  </Button>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Delete Folder */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-gray-300">
-                  Delete Folder
-                </h4>
-                <div className="space-y-2">
-                  <Label htmlFor="delete-folder-id" className="text-gray-300">
-                    Folder ID
-                  </Label>
-                  <Input
-                    id="delete-folder-id"
-                    value={folder.id}
-                    onChange={(e) => {
-                      setFolder((prev) => ({ ...prev, id: e.target.value }));
-                      setFolderMessage(null);
-                    }}
-                    placeholder="Enter folder ID to delete"
-                    type="number"
-                    className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                  />
-                  <Button
-                    onClick={async () => {
-                      setFolderMessage(null);
-                      try {
-                        const result = await handler.deleteFolder(
-                          Number(folder.id)
-                        );
-                        handleResult(result, setFolderMessage);
-                      } catch (error) {
-                        handleError(error, setFolderMessage);
-                      }
-                    }}
-                    variant="destructive"
-                    className="w-full"
-                    disabled={!folder.id}
-                  >
-                    Delete Folder
-                  </Button>
-                </div>
-              </div>
-
-              <MessageDisplay message={folderMessage} />
-            </CardContent>
-          </Card>
-
-          {/* Message Methods */}
-          <Card className="h-fit bg-gray-800 border-gray-700">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-white">
-                <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                Message Management
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Create Message */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-gray-300">
-                  Create New Message
-                </h4>
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label
-                        htmlFor="message-chat-id"
-                        className="text-gray-300"
-                      >
-                        Chat ID
-                      </Label>
-                      <Input
-                        id="message-chat-id"
-                        value={message.chatId}
-                        onChange={(e) => {
-                          setMessage((prev) => ({
-                            ...prev,
-                            chatId: e.target.value,
-                          }));
-                          setMessageMessage(null);
-                        }}
-                        placeholder="Chat ID"
-                        type="number"
-                        className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                      />
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="message-ref-version"
-                        className="text-gray-300"
-                      >
-                        Referenced Version
-                      </Label>
-                      <Input
-                        id="message-ref-version"
-                        value={message.referencedVersion}
-                        onChange={(e) => {
-                          setMessage((prev) => ({
-                            ...prev,
-                            referencedVersion: e.target.value,
-                          }));
-                          setMessageMessage(null);
-                        }}
-                        placeholder="Version ID (optional)"
-                        type="number"
-                        className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="message-content" className="text-gray-300">
-                      Message Content
-                    </Label>
-                    <Textarea
-                      id="message-content"
-                      value={message.content}
-                      onChange={(e) => {
-                        setMessage((prev) => ({
-                          ...prev,
-                          content: e.target.value,
-                        }));
-                        setMessageMessage(null);
-                      }}
-                      placeholder="Enter message content"
-                      rows={3}
-                      className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={async () => {
-                        setMessageMessage(null);
-                        try {
-                          const result = await handler.createMessage(
-                            Number(message.chatId),
-                            { user: null },
-                            message.content,
-                            Number(message.referencedVersion) || undefined
-                          );
-                          handleResult(result, setMessageMessage);
-                        } catch (error) {
-                          handleError(error, setMessageMessage);
-                        }
-                      }}
-                      className="flex-1"
-                      disabled={!message.chatId || !message.content.trim()}
-                    >
-                      Create User Message
-                    </Button>
-                    <Button
-                      onClick={async () => {
-                        setMessageMessage(null);
-                        try {
-                          const result = await handler.createMessage(
-                            Number(message.chatId),
-                            { ai: null },
-                            message.content,
-                            Number(message.referencedVersion) || undefined
-                          );
-                          handleResult(result, setMessageMessage);
-                        } catch (error) {
-                          handleError(error, setMessageMessage);
-                        }
-                      }}
-                      variant="secondary"
-                      className="flex-1"
-                      disabled={!message.chatId || !message.content.trim()}
-                    >
-                      Create AI Message
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Get Message */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-gray-300">
-                  Get Message by ID
-                </h4>
-                <div className="space-y-2">
-                  <Label htmlFor="get-message-id" className="text-gray-300">
-                    Message ID
-                  </Label>
-                  <Input
-                    id="get-message-id"
-                    value={message.id}
-                    onChange={(e) => {
-                      setMessage((prev) => ({ ...prev, id: e.target.value }));
-                      setMessageMessage(null);
-                    }}
-                    placeholder="Enter message ID"
-                    type="number"
-                    className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                  />
-                  <Button
-                    onClick={async () => {
-                      setMessageMessage(null);
-                      try {
-                        const result = await handler.getMessage(
-                          Number(message.id)
-                        );
-                        handleResult(result, setMessageMessage);
-                      } catch (error) {
-                        handleError(error, setMessageMessage);
-                      }
-                    }}
-                    className="w-full"
-                    disabled={!message.id}
-                  >
-                    Get Message
-                  </Button>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Get All Messages */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-gray-300">
-                  Get All Messages by Chat
-                </h4>
-                <div className="space-y-2">
-                  <Label htmlFor="messages-chat-id" className="text-gray-300">
-                    Chat ID
-                  </Label>
-                  <Input
-                    id="messages-chat-id"
-                    value={message.chatId}
-                    onChange={(e) => {
-                      setMessage((prev) => ({
-                        ...prev,
-                        chatId: e.target.value,
-                      }));
-                      setMessageMessage(null);
-                    }}
-                    placeholder="Enter chat ID"
-                    type="number"
-                    className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                  />
-                  <Button
-                    onClick={async () => {
-                      setMessageMessage(null);
-                      try {
-                        const result = await handler.getAllMessageByChatId(
-                          Number(message.chatId)
-                        );
-                        handleResult(result, setMessageMessage);
-                      } catch (error) {
-                        handleError(error, setMessageMessage);
-                      }
-                    }}
-                    className="w-full"
-                    disabled={!message.chatId}
-                  >
-                    Get All Messages
-                  </Button>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Update Message */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-gray-300">
-                  Update Message
-                </h4>
-                <div className="space-y-2">
-                  <Label htmlFor="update-message-id" className="text-gray-300">
-                    Message ID
-                  </Label>
-                  <Input
-                    id="update-message-id"
-                    value={message.id}
-                    onChange={(e) => {
-                      setMessage((prev) => ({ ...prev, id: e.target.value }));
-                      setMessageMessage(null);
-                    }}
-                    placeholder="Message ID"
-                    type="number"
-                    className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                  />
-                  <Label
-                    htmlFor="update-message-content"
-                    className="text-gray-300"
-                  >
-                    New Content
-                  </Label>
-                  <Textarea
-                    id="update-message-content"
-                    value={message.newContent}
-                    onChange={(e) => {
-                      setMessage((prev) => ({
-                        ...prev,
-                        newContent: e.target.value,
-                      }));
-                      setMessageMessage(null);
-                    }}
-                    placeholder="New message content"
-                    rows={3}
-                    className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                  />
-                  <Button
-                    onClick={async () => {
-                      setMessageMessage(null);
-                      try {
-                        const result = await handler.updateMessage(
-                          Number(message.id),
-                          message.newContent || undefined
-                        );
-                        handleResult(result, setMessageMessage);
-                      } catch (error) {
-                        handleError(error, setMessageMessage);
-                      }
-                    }}
-                    className="w-full"
-                    disabled={!message.id || !message.newContent.trim()}
-                  >
-                    Update Message
-                  </Button>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Delete Message */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-gray-300">
-                  Delete Message
-                </h4>
-                <div className="space-y-2">
-                  <Label htmlFor="delete-message-id" className="text-gray-300">
-                    Message ID
-                  </Label>
-                  <Input
-                    id="delete-message-id"
-                    value={message.id}
-                    onChange={(e) => {
-                      setMessage((prev) => ({ ...prev, id: e.target.value }));
-                      setMessageMessage(null);
-                    }}
-                    placeholder="Enter message ID to delete"
-                    type="number"
-                    className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                  />
-                  <Button
-                    onClick={async () => {
-                      setMessageMessage(null);
-                      try {
-                        const result = await handler.deleteMessage(
-                          Number(message.id)
-                        );
-                        handleResult(result, setMessageMessage);
-                      } catch (error) {
-                        handleError(error, setMessageMessage);
-                      }
-                    }}
-                    variant="destructive"
-                    className="w-full"
-                    disabled={!message.id}
-                  >
-                    Delete Message
-                  </Button>
-                </div>
-              </div>
-
-              <MessageDisplay message={messageMessage} />
-            </CardContent>
-          </Card>
-
-          {/* Project Version Methods */}
-          <Card className="h-fit bg-gray-800 border-gray-700">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-white">
-                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                Project Version Management
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Create Project Version */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-gray-300">
-                  Create Project Version
-                </h4>
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label htmlFor="pv-chat-id" className="text-gray-300">
-                        Chat ID
-                      </Label>
-                      <Input
-                        id="pv-chat-id"
-                        value={projectVersion.chatId}
-                        onChange={(e) => {
-                          setProjectVersion((prev) => ({
-                            ...prev,
-                            chatId: e.target.value,
-                          }));
-                          setProjectVersionMessage(null);
-                        }}
-                        placeholder="Chat ID"
-                        type="number"
-                        className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                      />
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="pv-version-number"
-                        className="text-gray-300"
-                      >
-                        Version Number
-                      </Label>
-                      <Input
-                        id="pv-version-number"
-                        value={projectVersion.versionNumber}
-                        onChange={(e) => {
-                          setProjectVersion((prev) => ({
-                            ...prev,
-                            versionNumber: e.target.value,
-                          }));
-                          setProjectVersionMessage(null);
-                        }}
-                        placeholder="Version number"
-                        type="number"
-                        className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="pv-snapshot" className="text-gray-300">
-                      Snapshot Content
-                    </Label>
-                    <Textarea
-                      id="pv-snapshot"
-                      value={projectVersion.snapshot}
-                      onChange={(e) => {
-                        setProjectVersion((prev) => ({
-                          ...prev,
-                          snapshot: e.target.value,
-                        }));
-                        setProjectVersionMessage(null);
-                      }}
-                      placeholder="Enter snapshot content"
-                      rows={4}
-                      className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                    />
-                  </div>
-                  <Button
-                    onClick={async () => {
-                      setProjectVersionMessage(null);
-                      try {
-                        const result = await handler.createProjectVersion(
-                          Number(projectVersion.chatId),
-                          Number(projectVersion.versionNumber),
-                          projectVersion.snapshot
-                        );
-                        handleResult(result, setProjectVersionMessage);
-                      } catch (error) {
-                        handleError(error, setProjectVersionMessage);
-                      }
-                    }}
-                    className="w-full"
-                    disabled={
-                      !projectVersion.chatId || !projectVersion.versionNumber
-                    }
-                  >
-                    Create Project Version
-                  </Button>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Get Project Version */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-gray-300">
-                  Get Project Version by ID
-                </h4>
-                <div className="space-y-2">
-                  <Label htmlFor="get-pv-id" className="text-gray-300">
-                    Version ID
-                  </Label>
-                  <Input
-                    id="get-pv-id"
-                    value={projectVersion.id}
-                    onChange={(e) => {
-                      setProjectVersion((prev) => ({
-                        ...prev,
-                        id: e.target.value,
-                      }));
-                      setProjectVersionMessage(null);
-                    }}
-                    placeholder="Enter version ID"
-                    type="number"
-                    className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                  />
-                  <Button
-                    onClick={async () => {
-                      setProjectVersionMessage(null);
-                      try {
-                        const result = await handler.getProjectVersion(
-                          Number(projectVersion.id)
-                        );
-                        handleResult(result, setProjectVersionMessage);
-                      } catch (error) {
-                        handleError(error, setProjectVersionMessage);
-                      }
-                    }}
-                    className="w-full"
-                    disabled={!projectVersion.id}
-                  >
-                    Get Project Version
-                  </Button>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Get All Project Versions */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-gray-300">
-                  Get All Project Versions by Chat
-                </h4>
-                <div className="space-y-2">
-                  <Label htmlFor="pvs-chat-id" className="text-gray-300">
-                    Chat ID
-                  </Label>
-                  <Input
-                    id="pvs-chat-id"
-                    value={projectVersion.chatId}
-                    onChange={(e) => {
-                      setProjectVersion((prev) => ({
-                        ...prev,
-                        chatId: e.target.value,
-                      }));
-                      setProjectVersionMessage(null);
-                    }}
-                    placeholder="Enter chat ID"
-                    type="number"
-                    className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                  />
-                  <Button
-                    onClick={async () => {
-                      setProjectVersionMessage(null);
-                      try {
-                        const result =
-                          await handler.getAllProjectVersionByChatId(
-                            Number(projectVersion.chatId)
-                          );
-                        handleResult(result, setProjectVersionMessage);
-                      } catch (error) {
-                        handleError(error, setProjectVersionMessage);
-                      }
-                    }}
-                    className="w-full"
-                    disabled={!projectVersion.chatId}
-                  >
-                    Get All Project Versions
-                  </Button>
-                </div>
-              </div>
-
-              <MessageDisplay message={projectVersionMessage} />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+function App() {
+  return (
+    <div className="app">
+      <Header />
+      <main>
+        <h1>Welcome to Test Project</h1>
+        <p>This is a test project created via API.</p>
+      </main>
     </div>
   );
 }
+
+export default App;`,
+                    folderId: srcFolderId
+                },
+                {
+                    name: "main.jsx",
+                    content: `import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App.jsx';
+import './index.css';
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+);`,
+                    folderId: srcFolderId
+                },
+                {
+                    name: "index.css",
+                    content: `body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.app {
+  text-align: center;
+}`,
+                    folderId: srcFolderId
+                },
+                {
+                    name: "Header.jsx",
+                    content: `import React from 'react';
+
+function Header() {
+  return (
+    <header style={{ padding: '20px', backgroundColor: '#f0f0f0' }}>
+      <h2>Test Project Header</h2>
+    </header>
+  );
+}
+
+export default Header;`,
+                    folderId: componentsFolderId
+                }
+            ];
+
+            // Create files
+            for (const file of testFiles) {
+                const fileResult = await chatHandler.createFile(
+                    versionId,
+                    file.folderId,
+                    file.name,
+                    file.content
+                );
+                if ("err" in fileResult) {
+                    console.error(`Failed to create file ${file.name}:`, fileResult.err);
+                }
+            }
+
+            // Create a test message
+            await chatHandler.createMessage(
+                chatId,
+                { user: null },
+                "Create a simple React app with a header component",
+                versionId
+            );
+
+            // Reload chats
+            await loadChats();
+            
+        } catch (err) {
+            setError(`Error creating test project: ${(err as Error).message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const formatTimestamp = (timestamp: bigint) => {
+        return new Date(Number(timestamp) / 1000000).toLocaleString();
+    };
+
+    if (!user) {
+        return (
+            <div className="min-h-screen bg-black text-white flex items-center justify-center">
+                <div className="text-center">
+                    <h1 className="text-2xl font-bold mb-4">Please log in</h1>
+                    <p>You need to be logged in to test the API.</p>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-black text-white p-6">
+            <div className="max-w-6xl mx-auto">
+                <h1 className="text-3xl font-bold mb-6">Chat System API Test</h1>
+                
+                {error && (
+                    <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded mb-6">
+                        {error}
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Left Column - Controls */}
+                    <div className="space-y-6">
+                        <div className="bg-gray-900 p-6 rounded-lg">
+                            <h2 className="text-xl font-semibold mb-4">Controls</h2>
+                            <div className="space-y-3">
+                                <button
+                                    onClick={loadChats}
+                                    disabled={loading}
+                                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-4 py-2 rounded transition-colors"
+                                >
+                                    {loading ? "Loading..." : "Load Chats"}
+                                </button>
+                                <button
+                                    onClick={createTestProject}
+                                    disabled={loading}
+                                    className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded transition-colors"
+                                >
+                                    {loading ? "Creating..." : "Create Test Project"}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Chats List */}
+                        <div className="bg-gray-900 p-6 rounded-lg">
+                            <h2 className="text-xl font-semibold mb-4">Chats ({chats.length})</h2>
+                            <div className="space-y-2 max-h-64 overflow-y-auto">
+                                {chats.map((chat) => (
+                                    <div
+                                        key={chat.id.toString()}
+                                        onClick={() => loadChatData(chat)}
+                                        className={`p-3 rounded cursor-pointer transition-colors ${
+                                            selectedChat?.id === chat.id
+                                                ? "bg-blue-600"
+                                                : "bg-gray-800 hover:bg-gray-700"
+                                        }`}
+                                    >
+                                        <div className="font-medium">
+                                            {chat.title?.[0] || `Chat ${chat.id}`}
+                                        </div>
+                                        <div className="text-sm text-gray-400">
+                                            ID: {chat.id.toString()}
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                            {formatTimestamp(chat.createdAt)}
+                                        </div>
+                                    </div>
+                                ))}
+                                {chats.length === 0 && (
+                                    <div className="text-gray-500 text-center py-4">
+                                        No chats found
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Right Column - Chat Data */}
+                    <div className="space-y-6">
+                        {selectedChat && (
+                            <>
+                                {/* Messages */}
+                                <div className="bg-gray-900 p-6 rounded-lg">
+                                    <h2 className="text-xl font-semibold mb-4">
+                                        Messages ({messages.length})
+                                    </h2>
+                                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                                        {messages.map((message) => (
+                                            <div key={message.id.toString()} className="bg-gray-800 p-3 rounded">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <span className={`text-sm font-medium ${
+                                                        "user" in message.sender ? "text-blue-400" : "text-green-400"
+                                                    }`}>
+                                                        {"user" in message.sender ? "User" : "AI"}
+                                                    </span>
+                                                    <span className="text-xs text-gray-500">
+                                                        {formatTimestamp(message.createdAt)}
+                                                    </span>
+                                                </div>
+                                                <div className="text-sm">{message.content}</div>
+                                            </div>
+                                        ))}
+                                        {messages.length === 0 && (
+                                            <div className="text-gray-500 text-center py-4">
+                                                No messages
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Project Versions */}
+                                <div className="bg-gray-900 p-6 rounded-lg">
+                                    <h2 className="text-xl font-semibold mb-4">
+                                        Project Versions ({projectVersions.length})
+                                    </h2>
+                                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                                        {projectVersions.map((version) => (
+                                            <div key={version.id.toString()} className="bg-gray-800 p-2 rounded">
+                                                <div className="text-sm font-medium">
+                                                    Version {version.versionNumber.toString()}
+                                                </div>
+                                                <div className="text-xs text-gray-400">
+                                                    {version.snapshot}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Folders */}
+                                <div className="bg-gray-900 p-6 rounded-lg">
+                                    <h2 className="text-xl font-semibold mb-4">
+                                        Folders ({folders.length})
+                                    </h2>
+                                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                                        {folders.map((folder) => (
+                                            <div key={folder.id.toString()} className="bg-gray-800 p-2 rounded text-sm">
+                                                📁 {folder.name}
+                                                {folder.parentId?.[0] && (
+                                                    <span className="text-gray-500 ml-2">
+                                                        (parent: {folder.parentId[0].toString()})
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ))}
+                                        {folders.length === 0 && (
+                                            <div className="text-gray-500 text-center py-2">No folders</div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Files */}
+                                <div className="bg-gray-900 p-6 rounded-lg">
+                                    <h2 className="text-xl font-semibold mb-4">
+                                        Files ({files.length})
+                                    </h2>
+                                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                                        {files.map((file) => (
+                                            <div key={file.id.toString()} className="bg-gray-800 p-3 rounded">
+                                                <div className="font-medium text-sm">📄 {file.name}</div>
+                                                {file.folderId?.[0] && (
+                                                    <div className="text-xs text-gray-500 mb-2">
+                                                        Folder ID: {file.folderId[0].toString()}
+                                                    </div>
+                                                )}
+                                                <div className="text-xs text-gray-400 bg-gray-900 p-2 rounded max-h-20 overflow-y-auto">
+                                                    {file.content.substring(0, 200)}
+                                                    {file.content.length > 200 && "..."}
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {files.length === 0 && (
+                                            <div className="text-gray-500 text-center py-2">No files</div>
+                                        )}
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default TestAPIPage;

@@ -213,7 +213,7 @@ const LandingPage: React.FC = () => {
                       <Play className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
                     </Link>
                   </Button>
-                  <Button variant="outline" size="lg">
+                  <Button className="text-black" variant="outline" size="lg">
                     Watch Demo
                   </Button>
                 </div>

@@ -9,12 +9,19 @@ import {
     ChevronRight,
     ChevronDown,
     Loader2,
+    Code,
+    Eye,
+    Palette,
+    MessageSquare,
+    User,
+    LogIn,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import CodeEditor from "@/components/ui/CodeEditor";
 import PreviewPane from "@/components/PreviewPane";
+import CanvasPane from "@/components/CanvasPane";
 import ChatSidebar from "@/components/ChatSidebar";
 import { useUser } from "@/context/AuthContext";
 import { ChatSystemHandler } from "@/handler/ChatSystemHandler";
@@ -25,6 +32,7 @@ import {
     Message,
     ProjectVersion,
 } from "@/declarations/chat_system_service/chat_system_service.did";
+import { Link } from "react-router";
 
 interface FileNode {
     id: number;
@@ -35,6 +43,8 @@ interface FileNode {
     parentId?: number;
     isOpen?: boolean;
 }
+
+type TabType = "code" | "preview" | "canvas";
 
 const Z9Page: React.FC = () => {
     const { user, principal } = useUser();
@@ -50,9 +60,12 @@ const Z9Page: React.FC = () => {
     const [fileTree, setFileTree] = useState<FileNode[]>([]);
     const [currentProjectVersion, setCurrentProjectVersion] = useState<ProjectVersion | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string>("");
+    const [activeTab, setActiveTab] = useState<TabType>("code");
+    const [canvasScreenshot, setCanvasScreenshot] = useState<string | null>(null);
     
     const chatHandler = useRef(new ChatSystemHandler());
     const webContainerRef = useRef<WebContainer | null>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
 
     // Initialize WebContainer
     useEffect(() => {
@@ -481,6 +494,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     const selectFile = (node: FileNode) => {
         if (node.type === "file") {
             setSelectedFile(node);
+            setActiveTab("code"); // Switch to code tab when file is selected
         }
     };
 
@@ -584,6 +598,16 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         ));
     };
 
+    const captureCanvasScreenshot = () => {
+        const canvas = canvasRef.current;
+        if (canvas) {
+            const screenshot = canvas.toDataURL('image/png');
+            setCanvasScreenshot(screenshot);
+            return screenshot;
+        }
+        return null;
+    };
+
     const sendMessage = async () => {
         if (!input.trim() || !currentChat) return;
 
@@ -591,7 +615,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             setIsLoading(true);
             const chatId = parseInt(currentChat);
             
-            // Create user message
+            // Capture canvas screenshot if on canvas tab
+            let screenshot = null;
+            if (activeTab === "canvas") {
+                screenshot = captureCanvasScreenshot();
+            }
+            
+            // Create user message (screenshot handling will be implemented later)
             await chatHandler.current.createMessage(
                 chatId,
                 { user: null },
@@ -609,6 +639,127 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             setIsLoading(false);
         }
     };
+
+    // Chat Selection Screen
+    if (!principal) {
+        return (
+            <div className="h-screen bg-black text-white flex items-center justify-center">
+                <div className="text-center max-w-md">
+                    <User className="w-16 h-16 mx-auto mb-6 text-gray-400" />
+                    <h1 className="text-2xl font-bold mb-4">Authentication Required</h1>
+                    <p className="text-gray-400 mb-6">
+                        Please log in to access your projects and start building with vanadium.
+                    </p>
+                    <Button asChild size="lg">
+                        <Link to="/login">
+                            <LogIn className="w-4 h-4 mr-2" />
+                            Go to Login
+                        </Link>
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
+    if (!currentChat) {
+        return (
+            <div className="h-screen bg-black text-white flex">
+                {/* Chat Sidebar */}
+                {sidebarOpen && (
+                    <ChatSidebar
+                        chats={chats}
+                        currentChat={currentChat}
+                        onSelectChat={setCurrentChat}
+                        onClose={() => setSidebarOpen(false)}
+                        onNewProject={createNewProject}
+                    />
+                )}
+
+                {/* Main Content */}
+                <div className="flex-1 flex flex-col">
+                    {/* Header */}
+                    <header className="border-b border-gray-800 p-4 flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setSidebarOpen(true)}
+                            >
+                                <Menu className="w-5 h-5" />
+                            </Button>
+                            <h1 className="text-xl font-semibold">vanadium</h1>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                            <span className="text-sm text-gray-400">
+                                Welcome, {user?.username}
+                            </span>
+                            <Button onClick={createNewProject} disabled={isLoading}>
+                                {isLoading ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                    <Plus className="w-4 h-4 mr-2" />
+                                )}
+                                New Project
+                            </Button>
+                        </div>
+                    </header>
+
+                    {/* Chat Selection Content */}
+                    <div className="flex-1 flex items-center justify-center">
+                        <div className="text-center max-w-2xl px-6">
+                            <MessageSquare className="w-20 h-20 mx-auto mb-8 text-gray-600" />
+                            <h2 className="text-3xl font-bold mb-4">
+                                Welcome to vanadium
+                            </h2>
+                            <p className="text-xl text-gray-400 mb-8">
+                                Create stunning React applications with the power of AI. 
+                                Start a new project or select an existing one from the sidebar.
+                            </p>
+                            
+                            {chats.length > 0 ? (
+                                <div className="space-y-4">
+                                    <p className="text-gray-500">
+                                        You have {chats.length} project{chats.length !== 1 ? 's' : ''}
+                                    </p>
+                                    <div className="flex justify-center space-x-4">
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => setSidebarOpen(true)}
+                                        >
+                                            <Menu className="w-4 h-4 mr-2" />
+                                            Browse Projects
+                                        </Button>
+                                        <Button onClick={createNewProject} disabled={isLoading}>
+                                            {isLoading ? (
+                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                            ) : (
+                                                <Plus className="w-4 h-4 mr-2" />
+                                            )}
+                                            New Project
+                                        </Button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-6">
+                                    <p className="text-gray-500">
+                                        No projects yet. Create your first project to get started.
+                                    </p>
+                                    <Button size="lg" onClick={createNewProject} disabled={isLoading}>
+                                        {isLoading ? (
+                                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                        ) : (
+                                            <Plus className="w-5 h-5 mr-2" />
+                                        )}
+                                        Create Your First Project
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="h-screen bg-black text-white flex">
@@ -636,7 +787,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                             <Menu className="w-5 h-5" />
                         </Button>
                         <h1 className="text-xl font-semibold">
-                            {currentChat ? `Project ${currentChat}` : "vanadium"}
+                            Project {currentChat}
                         </h1>
                     </div>
                     <Button onClick={createNewProject} disabled={isLoading}>
@@ -667,49 +818,150 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                         </div>
                     </div>
 
-                    {/* Editor and Preview */}
-                    <div className="flex-1 flex">
-                        {/* Code Editor */}
-                        <div className="flex-1 flex flex-col">
-                            {selectedFile ? (
-                                <>
-                                    <div className="border-b border-gray-800 p-2 bg-gray-900">
-                                        <span className="text-sm text-gray-300">
-                                            {selectedFile.name}
-                                        </span>
-                                    </div>
-                                    <div className="flex-1">
-                                        <CodeEditor
-                                            code={selectedFile.content || ""}
-                                            onChange={updateFileContent}
-                                        />
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="flex-1 flex items-center justify-center text-gray-500">
-                                    Select a file to edit
-                                </div>
-                            )}
+                    {/* Editor, Preview, and Canvas */}
+                    <div className="flex-1 flex flex-col">
+                        {/* Tab Navigation */}
+                        <div className="border-b border-gray-800 bg-gray-900">
+                            <div className="flex">
+                                <button
+                                    onClick={() => setActiveTab("code")}
+                                    className={`flex items-center px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                                        activeTab === "code"
+                                            ? "border-purple-glow text-white bg-gray-800"
+                                            : "border-transparent text-gray-400 hover:text-white hover:bg-gray-800"
+                                    }`}
+                                >
+                                    <Code className="w-4 h-4 mr-2" />
+                                    Code
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab("preview")}
+                                    className={`flex items-center px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                                        activeTab === "preview"
+                                            ? "border-purple-glow text-white bg-gray-800"
+                                            : "border-transparent text-gray-400 hover:text-white hover:bg-gray-800"
+                                    }`}
+                                >
+                                    <Eye className="w-4 h-4 mr-2" />
+                                    Preview
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab("canvas")}
+                                    className={`flex items-center px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                                        activeTab === "canvas"
+                                            ? "border-purple-glow text-white bg-gray-800"
+                                            : "border-transparent text-gray-400 hover:text-white hover:bg-gray-800"
+                                    }`}
+                                >
+                                    <Palette className="w-4 h-4 mr-2" />
+                                    Canvas
+                                </button>
+                            </div>
                         </div>
 
-                        {/* Preview */}
-                        <div className="w-1/2 border-l border-gray-800">
-                            <div className="border-b border-gray-800 p-2 bg-gray-900">
-                                <span className="text-sm text-gray-300">Preview</span>
-                            </div>
-                            <div className="h-full">
-                                {previewUrl ? (
-                                    <iframe
-                                        src={previewUrl}
-                                        className="w-full h-full border-0"
-                                        title="Preview"
-                                    />
-                                ) : (
-                                    <div className="flex items-center justify-center h-full text-gray-500">
-                                        {isWebContainerReady ? "Starting preview..." : "Loading WebContainer..."}
+                        {/* Tab Content */}
+                        <div className="flex-1 flex">
+                            {activeTab === "code" && (
+                                <div className="flex-1 flex">
+                                    {/* Code Editor */}
+                                    <div className="flex-1 flex flex-col">
+                                        {selectedFile ? (
+                                            <>
+                                                <div className="border-b border-gray-800 p-2 bg-gray-900">
+                                                    <span className="text-sm text-gray-300">
+                                                        {selectedFile.name}
+                                                    </span>
+                                                </div>
+                                                <div className="flex-1">
+                                                    <CodeEditor
+                                                        code={selectedFile.content || ""}
+                                                        onChange={updateFileContent}
+                                                    />
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="flex-1 flex items-center justify-center text-gray-500">
+                                                Select a file to edit
+                                            </div>
+                                        )}
                                     </div>
-                                )}
-                            </div>
+
+                                    {/* Preview */}
+                                    <div className="w-1/2 border-l border-gray-800">
+                                        <div className="border-b border-gray-800 p-2 bg-gray-900">
+                                            <span className="text-sm text-gray-300">Preview</span>
+                                        </div>
+                                        <div className="h-full">
+                                            {previewUrl ? (
+                                                <iframe
+                                                    src={previewUrl}
+                                                    className="w-full h-full border-0"
+                                                    title="Preview"
+                                                />
+                                            ) : (
+                                                <div className="flex items-center justify-center h-full text-gray-500">
+                                                    {isWebContainerReady ? "Starting preview..." : "Loading WebContainer..."}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === "preview" && (
+                                <div className="flex-1">
+                                    {previewUrl ? (
+                                        <iframe
+                                            src={previewUrl}
+                                            className="w-full h-full border-0"
+                                            title="Preview"
+                                        />
+                                    ) : (
+                                        <div className="flex items-center justify-center h-full text-gray-500">
+                                            {isWebContainerReady ? "Starting preview..." : "Loading WebContainer..."}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {activeTab === "canvas" && (
+                                <div className="flex-1 flex">
+                                    {/* Canvas */}
+                                    <div className="flex-1 relative">
+                                        <CanvasPane />
+                                        <canvas
+                                            ref={canvasRef}
+                                            className="absolute inset-0 pointer-events-none opacity-0"
+                                            width={800}
+                                            height={600}
+                                        />
+                                    </div>
+
+                                    {/* Preview (unclickable) */}
+                                    <div className="w-1/2 border-l border-gray-800 relative">
+                                        <div className="border-b border-gray-800 p-2 bg-gray-900">
+                                            <span className="text-sm text-gray-300">Preview (Read-only)</span>
+                                        </div>
+                                        <div className="h-full relative">
+                                            {previewUrl ? (
+                                                <>
+                                                    <iframe
+                                                        src={previewUrl}
+                                                        className="w-full h-full border-0"
+                                                        title="Preview"
+                                                    />
+                                                    {/* Overlay to make preview unclickable */}
+                                                    <div className="absolute inset-0 bg-transparent cursor-not-allowed" />
+                                                </>
+                                            ) : (
+                                                <div className="flex items-center justify-center h-full text-gray-500">
+                                                    {isWebContainerReady ? "Starting preview..." : "Loading WebContainer..."}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -720,7 +972,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                         <Textarea
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            placeholder="Describe what you want to build..."
+                            placeholder={
+                                activeTab === "canvas" 
+                                    ? "Describe what you want to build (canvas will be included)..." 
+                                    : "Describe what you want to build..."
+                            }
                             className="flex-1 min-h-[60px] resize-none"
                             onKeyDown={(e) => {
                                 if (e.key === "Enter" && !e.shiftKey) {
@@ -737,6 +993,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                             )}
                         </Button>
                     </div>
+                    {activeTab === "canvas" && (
+                        <p className="text-xs text-gray-500 mt-2">
+                            💡 Your canvas drawing will be included with your prompt
+                        </p>
+                    )}
                 </div>
             </div>
         </div>

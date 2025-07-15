@@ -8,6 +8,7 @@ import {
     Message,
     ProjectVersion,
 } from "@/declarations/chat_system_service/chat_system_service.did";
+import Beams from "@/components/backgrounds/Beams/Beams";
 
 const TestAPIPage: React.FC = () => {
     const { user, principal } = useUser();
@@ -248,178 +249,202 @@ export default Header;`,
     }
 
     return (
-        <div className="min-h-screen bg-black text-white p-6">
-            <div className="max-w-6xl mx-auto">
-                <h1 className="text-3xl font-bold mb-6">Chat System API Test</h1>
-                
-                {error && (
-                    <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded mb-6">
-                        {error}
-                    </div>
-                )}
+      <div className="min-h-screen bg-black text-white p-6">
+        <div className="max-w-6xl mx-auto">
+          <h1 className="text-3xl font-bold mb-6">Chat System API Test</h1>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Left Column - Controls */}
-                    <div className="space-y-6">
-                        <div className="bg-gray-900 p-6 rounded-lg">
-                            <h2 className="text-xl font-semibold mb-4">Controls</h2>
-                            <div className="space-y-3">
-                                <button
-                                    onClick={loadChats}
-                                    disabled={loading}
-                                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-4 py-2 rounded transition-colors"
-                                >
-                                    {loading ? "Loading..." : "Load Chats"}
-                                </button>
-                                <button
-                                    onClick={createTestProject}
-                                    disabled={loading}
-                                    className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded transition-colors"
-                                >
-                                    {loading ? "Creating..." : "Create Test Project"}
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Chats List */}
-                        <div className="bg-gray-900 p-6 rounded-lg">
-                            <h2 className="text-xl font-semibold mb-4">Chats ({chats.length})</h2>
-                            <div className="space-y-2 max-h-64 overflow-y-auto">
-                                {chats.map((chat) => (
-                                    <div
-                                        key={chat.id.toString()}
-                                        onClick={() => loadChatData(chat)}
-                                        className={`p-3 rounded cursor-pointer transition-colors ${
-                                            selectedChat?.id === chat.id
-                                                ? "bg-blue-600"
-                                                : "bg-gray-800 hover:bg-gray-700"
-                                        }`}
-                                    >
-                                        <div className="font-medium">
-                                            {chat.title?.[0] || `Chat ${chat.id}`}
-                                        </div>
-                                        <div className="text-sm text-gray-400">
-                                            ID: {chat.id.toString()}
-                                        </div>
-                                        <div className="text-xs text-gray-500">
-                                            {formatTimestamp(chat.createdAt)}
-                                        </div>
-                                    </div>
-                                ))}
-                                {chats.length === 0 && (
-                                    <div className="text-gray-500 text-center py-4">
-                                        No chats found
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Right Column - Chat Data */}
-                    <div className="space-y-6">
-                        {selectedChat && (
-                            <>
-                                {/* Messages */}
-                                <div className="bg-gray-900 p-6 rounded-lg">
-                                    <h2 className="text-xl font-semibold mb-4">
-                                        Messages ({messages.length})
-                                    </h2>
-                                    <div className="space-y-2 max-h-48 overflow-y-auto">
-                                        {messages.map((message) => (
-                                            <div key={message.id.toString()} className="bg-gray-800 p-3 rounded">
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <span className={`text-sm font-medium ${
-                                                        "user" in message.sender ? "text-blue-400" : "text-green-400"
-                                                    }`}>
-                                                        {"user" in message.sender ? "User" : "AI"}
-                                                    </span>
-                                                    <span className="text-xs text-gray-500">
-                                                        {formatTimestamp(message.createdAt)}
-                                                    </span>
-                                                </div>
-                                                <div className="text-sm">{message.content}</div>
-                                            </div>
-                                        ))}
-                                        {messages.length === 0 && (
-                                            <div className="text-gray-500 text-center py-4">
-                                                No messages
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Project Versions */}
-                                <div className="bg-gray-900 p-6 rounded-lg">
-                                    <h2 className="text-xl font-semibold mb-4">
-                                        Project Versions ({projectVersions.length})
-                                    </h2>
-                                    <div className="space-y-2 max-h-32 overflow-y-auto">
-                                        {projectVersions.map((version) => (
-                                            <div key={version.id.toString()} className="bg-gray-800 p-2 rounded">
-                                                <div className="text-sm font-medium">
-                                                    Version {version.versionNumber.toString()}
-                                                </div>
-                                                <div className="text-xs text-gray-400">
-                                                    {version.snapshot}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Folders */}
-                                <div className="bg-gray-900 p-6 rounded-lg">
-                                    <h2 className="text-xl font-semibold mb-4">
-                                        Folders ({folders.length})
-                                    </h2>
-                                    <div className="space-y-1 max-h-32 overflow-y-auto">
-                                        {folders.map((folder) => (
-                                            <div key={folder.id.toString()} className="bg-gray-800 p-2 rounded text-sm">
-                                                📁 {folder.name}
-                                                {folder.parentId?.[0] && (
-                                                    <span className="text-gray-500 ml-2">
-                                                        (parent: {folder.parentId[0].toString()})
-                                                    </span>
-                                                )}
-                                            </div>
-                                        ))}
-                                        {folders.length === 0 && (
-                                            <div className="text-gray-500 text-center py-2">No folders</div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Files */}
-                                <div className="bg-gray-900 p-6 rounded-lg">
-                                    <h2 className="text-xl font-semibold mb-4">
-                                        Files ({files.length})
-                                    </h2>
-                                    <div className="space-y-2 max-h-48 overflow-y-auto">
-                                        {files.map((file) => (
-                                            <div key={file.id.toString()} className="bg-gray-800 p-3 rounded">
-                                                <div className="font-medium text-sm">📄 {file.name}</div>
-                                                {file.folderId?.[0] && (
-                                                    <div className="text-xs text-gray-500 mb-2">
-                                                        Folder ID: {file.folderId[0].toString()}
-                                                    </div>
-                                                )}
-                                                <div className="text-xs text-gray-400 bg-gray-900 p-2 rounded max-h-20 overflow-y-auto">
-                                                    {file.content.substring(0, 200)}
-                                                    {file.content.length > 200 && "..."}
-                                                </div>
-                                            </div>
-                                        ))}
-                                        {files.length === 0 && (
-                                            <div className="text-gray-500 text-center py-2">No files</div>
-                                        )}
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                </div>
+          {error && (
+            <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded mb-6">
+              {error}
             </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left Column - Controls */}
+            <div className="space-y-6">
+              <div className="bg-gray-900 p-6 rounded-lg">
+                <h2 className="text-xl font-semibold mb-4">Controls</h2>
+                <div className="space-y-3">
+                  <button
+                    onClick={loadChats}
+                    disabled={loading}
+                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-4 py-2 rounded transition-colors"
+                  >
+                    {loading ? "Loading..." : "Load Chats"}
+                  </button>
+                  <button
+                    onClick={createTestProject}
+                    disabled={loading}
+                    className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded transition-colors"
+                  >
+                    {loading ? "Creating..." : "Create Test Project"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Chats List */}
+              <div className="bg-gray-900 p-6 rounded-lg">
+                <h2 className="text-xl font-semibold mb-4">
+                  Chats ({chats.length})
+                </h2>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {chats.map((chat) => (
+                    <div
+                      key={chat.id.toString()}
+                      onClick={() => loadChatData(chat)}
+                      className={`p-3 rounded cursor-pointer transition-colors ${
+                        selectedChat?.id === chat.id
+                          ? "bg-blue-600"
+                          : "bg-gray-800 hover:bg-gray-700"
+                      }`}
+                    >
+                      <div className="font-medium">
+                        {chat.title?.[0] || `Chat ${chat.id}`}
+                      </div>
+                      <div className="text-sm text-gray-400">
+                        ID: {chat.id.toString()}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {formatTimestamp(chat.createdAt)}
+                      </div>
+                    </div>
+                  ))}
+                  {chats.length === 0 && (
+                    <div className="text-gray-500 text-center py-4">
+                      No chats found
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column - Chat Data */}
+            <div className="space-y-6">
+              {selectedChat && (
+                <>
+                  {/* Messages */}
+                  <div className="bg-gray-900 p-6 rounded-lg">
+                    <h2 className="text-xl font-semibold mb-4">
+                      Messages ({messages.length})
+                    </h2>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {messages.map((message) => (
+                        <div
+                          key={message.id.toString()}
+                          className="bg-gray-800 p-3 rounded"
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <span
+                              className={`text-sm font-medium ${
+                                "user" in message.sender
+                                  ? "text-blue-400"
+                                  : "text-green-400"
+                              }`}
+                            >
+                              {"user" in message.sender ? "User" : "AI"}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {formatTimestamp(message.createdAt)}
+                            </span>
+                          </div>
+                          <div className="text-sm">{message.content}</div>
+                        </div>
+                      ))}
+                      {messages.length === 0 && (
+                        <div className="text-gray-500 text-center py-4">
+                          No messages
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Project Versions */}
+                  <div className="bg-gray-900 p-6 rounded-lg">
+                    <h2 className="text-xl font-semibold mb-4">
+                      Project Versions ({projectVersions.length})
+                    </h2>
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                      {projectVersions.map((version) => (
+                        <div
+                          key={version.id.toString()}
+                          className="bg-gray-800 p-2 rounded"
+                        >
+                          <div className="text-sm font-medium">
+                            Version {version.versionNumber.toString()}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            {version.snapshot}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Folders */}
+                  <div className="bg-gray-900 p-6 rounded-lg">
+                    <h2 className="text-xl font-semibold mb-4">
+                      Folders ({folders.length})
+                    </h2>
+                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                      {folders.map((folder) => (
+                        <div
+                          key={folder.id.toString()}
+                          className="bg-gray-800 p-2 rounded text-sm"
+                        >
+                          📁 {folder.name}
+                          {folder.parentId?.[0] && (
+                            <span className="text-gray-500 ml-2">
+                              (parent: {folder.parentId[0].toString()})
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                      {folders.length === 0 && (
+                        <div className="text-gray-500 text-center py-2">
+                          No folders
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Files */}
+                  <div className="bg-gray-900 p-6 rounded-lg">
+                    <h2 className="text-xl font-semibold mb-4">
+                      Files ({files.length})
+                    </h2>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {files.map((file) => (
+                        <div
+                          key={file.id.toString()}
+                          className="bg-gray-800 p-3 rounded"
+                        >
+                          <div className="font-medium text-sm">
+                            📄 {file.name}
+                          </div>
+                          {file.folderId?.[0] && (
+                            <div className="text-xs text-gray-500 mb-2">
+                              Folder ID: {file.folderId[0].toString()}
+                            </div>
+                          )}
+                          <div className="text-xs text-gray-400 bg-gray-900 p-2 rounded max-h-20 overflow-y-auto">
+                            {file.content.substring(0, 200)}
+                            {file.content.length > 200 && "..."}
+                          </div>
+                        </div>
+                      ))}
+                      {files.length === 0 && (
+                        <div className="text-gray-500 text-center py-2">
+                          No files
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
+      </div>
     );
 };
 

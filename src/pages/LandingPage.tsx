@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/card";
 import { Console } from "console";
 import { useUser } from "@/context/AuthContext";
+import Beams from "@/components/backgrounds/Beams/Beams";
+import Aurora from "@/components/backgrounds/Aurora/Aurora";
 
 type Tab = "home" | "features" | "pricing" | "about" | "login" | "logout";
 
@@ -198,7 +200,7 @@ const LandingPage: React.FC = () => {
             {/* Hero Section */}
             <div className="max-w-6xl mx-auto px-6 py-20 text-center">
               <div className="mb-8">
-                <h1 className="text-6xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-purple-400 via-purple-glow to-purple-600 bg-clip-text text-transparent">
+                <h1 className="text-6xl md:text-7xl lexend-100 font-bold mb-6 bg-gradient-to-r from-purple-400 via-purple-glow to-purple-600 bg-clip-text text-transparent">
                   vanadium
                 </h1>
                 <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
@@ -217,30 +219,6 @@ const LandingPage: React.FC = () => {
                     Watch Demo
                   </Button>
                 </div>
-              </div>
-            </div>
-
-            {/* Features Grid */}
-            <div className="max-w-6xl mx-auto px-6 py-20">
-              <h2 className="text-4xl font-bold text-center mb-16">
-                Why Choose vanadium?
-              </h2>
-              <div className="grid md:grid-cols-3 gap-8">
-                <FeatureCard
-                  icon={<Zap className="w-8 h-8" />}
-                  title="AI-Powered"
-                  description="Generate complete React applications using natural language prompts with our advanced Z9 AI engine."
-                />
-                <FeatureCard
-                  icon={<Shield className="w-8 h-8" />}
-                  title="Blockchain Security"
-                  description="Built on Internet Computer Protocol (ICP) for enhanced security and decentralized data storage."
-                />
-                <FeatureCard
-                  icon={<Code className="w-8 h-8" />}
-                  title="Professional Tools"
-                  description="Monaco editor, real-time preview, and modern development workflow out of the box."
-                />
               </div>
             </div>
           </div>
@@ -295,6 +273,12 @@ const LandingPage: React.FC = () => {
       </nav>
 
       {/* Content */}
+      <Aurora
+        colorStops={["#3A29FF", "#FF94B4", "#FF3232"]}
+        blend={0.5}
+        amplitude={1.0}
+        speed={0.5}
+      />
       <main>{renderTabContent()}</main>
 
       {/* Footer */}

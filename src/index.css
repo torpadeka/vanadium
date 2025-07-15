@@ -110,6 +110,13 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+.lexend-100 {
+  font-family: "Lexend", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 200;
+  font-style: normal;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

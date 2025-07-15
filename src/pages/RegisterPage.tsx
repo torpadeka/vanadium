@@ -27,7 +27,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-black text-white font-inter">
+    <div className="flex items-center justify-center min-h-screen bg-black text-white host-grotesk-300">
       <div className="relative bg-gray-800 p-6 rounded-xl shadow-md border border-gray-700">
         <div className="absolute top-0 left-0 w-full h-2 rounded-t-xl bg-gradient-to-r from-blue-500 to-purple-500"></div>
         <h1 className="text-2xl font-bold mb-6">Register</h1>

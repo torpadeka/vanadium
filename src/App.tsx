@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route } from "react-router";
 import LandingPage from "./pages/LandingPage";
 import Z9Page from "./pages/Z9Page";
 import RegisterPage from "./pages/RegisterPage";
-import LoginPage from "./pages/LoginPage";
 import { UserProvider, useUser } from "@/context/AuthContext";
 import TestAPIPage from "./pages/TestAPIPage";
 
@@ -34,7 +33,6 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-black text-white font-inter">
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
           <Route path="/z9" element={<Z9Page />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/test" element={<TestAPIPage />} />

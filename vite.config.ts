@@ -8,6 +8,32 @@ import tailwindcss from "@tailwindcss/vite";
 
 dotenv.config();
 
+// Custom middleware to conditionally apply headers
+function conditionalHeaders() {
+    return {
+        name: "conditional-headers",
+        configureServer(server) {
+            server.middlewares.use((req, res, next) => {
+                // Apply headers only for WebContainer-related routes (e.g., /z9 or /z9/preview)
+                const webContainerRoutes = ["/z9"]; // Adjust based on your routing
+                const isWebContainerRoute = webContainerRoutes.some((route) =>
+                    req.url.startsWith(route)
+                );
+
+                if (isWebContainerRoute) {
+                    // Apply headers for WebContainer routes
+                    res.setHeader(
+                        "Cross-Origin-Embedder-Policy",
+                        "require-corp"
+                    );
+                    res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+                }
+                next();
+            });
+        },
+    };
+}
+
 export default defineConfig({
     root: "src",
     build: {
@@ -28,10 +54,7 @@ export default defineConfig({
                 changeOrigin: true,
             },
         },
-        headers: {
-            "Cross-Origin-Embedder-Policy": "require-corp",
-            "Cross-Origin-Opener-Policy": "same-origin",
-        },
+        // Remove headers from here
     },
     plugins: [
         react(),
@@ -39,6 +62,7 @@ export default defineConfig({
         environment("all", { prefix: "DFX_" }),
         tailwindcss(),
         forwardTrailingSlash(),
+        conditionalHeaders(), // Add custom middleware
     ],
     cacheDir: "../node_modules/.vite",
     resolve: {

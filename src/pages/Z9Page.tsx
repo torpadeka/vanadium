@@ -724,6 +724,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                                     <div className="flex justify-center space-x-4">
                                         <Button
                                             variant="outline"
+                                            className="text-black"
                                             onClick={() => setSidebarOpen(true)}
                                         >
                                             <Menu className="w-4 h-4 mr-2" />

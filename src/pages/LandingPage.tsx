@@ -203,77 +203,85 @@ const LandingPage: React.FC = () => {
                     </div>
                 );
 
-      default:
-        return (
-          <div className="relative">
-            {/* Hero Section */}
-            <div className="max-w-6xl mx-auto px-6 py-20 text-center">
-              <div className="mb-8">
-                <h1 className="text-6xl md:text-7xl lexend-100 font-bold mb-6 bg-gradient-to-r from-purple-400 via-purple-glow to-purple-600 bg-clip-text text-transparent">
-                  vanadium
-                </h1>
-                <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
-                  Create stunning React applications with the power of AI. Built
-                  on blockchain technology for enhanced security and
-                  decentralization.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Button asChild size="lg" className="group">
-                    <Link to="/z9">
-                      Start Building
-                      <Play className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                    </Link>
-                  </Button>
-                  <Button className="text-black" variant="outline" size="lg">
-                    Watch Demo
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-    }
-  };
-  return (
-    <div className="min-h-screen bg-black text-white">
-      {/* Navigation */}
-      <nav className="border-b border-gray-800 backdrop-blur-sm bg-black/80 sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Zap className="w-8 h-8 text-purple-glow" />
-              <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 via-purple-glow to-purple-600 bg-clip-text text-transparent">
-                vanadium
-              </span>
-            </div>
-            <div className="hidden md:flex items-center space-x-8">
-              <div className="margin-2">{user?.username}</div>
-              <NavItem
-                label="Home"
-                active={activeTab === "home"}
-                onClick={() => setActiveTab("home")}
-              />
-              <NavItem
-                label="Features"
-                active={activeTab === "features"}
-                onClick={() => setActiveTab("features")}
-              />
-              <NavItem
-                label="Pricing"
-                active={activeTab === "pricing"}
-                onClick={() => setActiveTab("pricing")}
-              />
-              <NavItem
-                label="About"
-                active={activeTab === "about"}
-                onClick={() => setActiveTab("about")}
-              />
-              <NavItem
-                label="Login"
-                active={activeTab === "login"}
-                onClick={() => (window.location.href = "login")}
-              />
-              {/* <Button onClick={() => handleLogout()} size="sm">
+            default:
+                return (
+                    <div className="relative">
+                        {/* Hero Section */}
+                        <div className="max-w-6xl mx-auto px-6 py-20 text-center">
+                            <div className="mb-8">
+                                <h1 className="text-6xl md:text-7xl lexend-100 font-bold mb-6 bg-gradient-to-r from-purple-400 via-purple-glow to-purple-600 bg-clip-text text-transparent">
+                                    vanadium
+                                </h1>
+                                <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
+                                    Create stunning React applications with the
+                                    power of AI. Built on blockchain technology
+                                    for enhanced security and decentralization.
+                                </p>
+                                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                                    <Button asChild size="lg" className="group">
+                                        <a
+                                            onClick={() =>
+                                                (window.location.href = "/z9")
+                                            }
+                                        >
+                                            Start Building
+                                            <Play className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                                        </a>
+                                    </Button>
+                                    <Button
+                                        className="text-black"
+                                        variant="outline"
+                                        size="lg"
+                                    >
+                                        Watch Demo
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+        }
+    };
+    return (
+        <div className="min-h-screen bg-black text-white">
+            {/* Navigation */}
+            <nav className="border-b border-gray-800 backdrop-blur-sm bg-black/80 sticky top-0 z-50">
+                <div className="max-w-6xl mx-auto px-6 py-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                            <Zap className="w-8 h-8 text-purple-glow" />
+                            <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 via-purple-glow to-purple-600 bg-clip-text text-transparent">
+                                vanadium
+                            </span>
+                        </div>
+                        <div className="hidden md:flex items-center space-x-8">
+                            <div className="margin-2">{user?.username}</div>
+                            <NavItem
+                                label="Home"
+                                active={activeTab === "home"}
+                                onClick={() => setActiveTab("home")}
+                            />
+                            <NavItem
+                                label="Features"
+                                active={activeTab === "features"}
+                                onClick={() => setActiveTab("features")}
+                            />
+                            <NavItem
+                                label="Pricing"
+                                active={activeTab === "pricing"}
+                                onClick={() => setActiveTab("pricing")}
+                            />
+                            <NavItem
+                                label="About"
+                                active={activeTab === "about"}
+                                onClick={() => setActiveTab("about")}
+                            />
+                            <NavItem
+                                label="Login"
+                                active={activeTab === "login"}
+                                onClick={() => (window.location.href = "login")}
+                            />
+                            {/* <Button onClick={() => handleLogout()} size="sm">
                 Logout
               </Button> */}
                         </div>
@@ -281,14 +289,14 @@ const LandingPage: React.FC = () => {
                 </div>
             </nav>
 
-      {/* Content */}
-      <Aurora
-        colorStops={["#3A29FF", "#FF94B4", "#FF3232"]}
-        blend={0.5}
-        amplitude={1.0}
-        speed={0.5}
-      />
-      <main>{renderTabContent()}</main>
+            {/* Content */}
+            <Aurora
+                colorStops={["#3A29FF", "#FF94B4", "#FF3232"]}
+                blend={0.5}
+                amplitude={1.0}
+                speed={0.5}
+            />
+            <main>{renderTabContent()}</main>
 
             {/* Footer */}
             <footer className="border-t border-gray-800 py-12">

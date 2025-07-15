@@ -334,10 +334,14 @@ const LandingPage: React.FC = () => {
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center host-grotesk-300">
                   <Button asChild size="lg" className="group">
-                    <Link to="/z9">
+                    <a
+                      onClick={() => {
+                        window.location.href = "/z9";
+                      }}
+                    >
                       Start Building
                       <Play className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                    </Link>
+                    </a>
                   </Button>
                   <Button
                     className="text-gray-900 bg-gray-200 cursor-pointer"

@@ -885,364 +885,386 @@ button:focus-visible {
 
     if (!currentChat) {
         return (
-            <div className="h-screen bg-black text-white flex">
-                {/* Chat Sidebar */}
-                {sidebarOpen && (
-                    <ChatSidebar
-                        chats={chats}
-                        currentChat={currentChat}
-                        onSelectChat={setCurrentChat}
-                        onClose={() => setSidebarOpen(false)}
-                        onNewProject={createNewProject}
-                    />
-                )}
+          <div className="h-screen bg-black text-white flex">
+            {/* Chat Sidebar */}
+            {sidebarOpen && (
+              <ChatSidebar
+                chats={chats}
+                currentChat={currentChat}
+                onSelectChat={setCurrentChat}
+                onClose={() => setSidebarOpen(false)}
+                onNewProject={createNewProject}
+              />
+            )}
 
-                {/* Main Content */}
-                <div className="flex-1 flex flex-col">
-                    {/* Header */}
-                    <header className="border-b border-gray-800 p-4 flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setSidebarOpen(true)}
-                            >
-                                <Menu className="w-5 h-5" />
-                            </Button>
-                            <h1 className="text-xl font-semibold">vanadium</h1>
-                        </div>
-                        <div className="flex items-center space-x-4">
-                            <span className="text-sm text-gray-400">
-                                Welcome, {user?.username}
-                            </span>
-                            <Button onClick={createNewProject} disabled={isLoading}>
-                                {isLoading ? (
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                ) : (
-                                    <Plus className="w-4 h-4 mr-2" />
-                                )}
-                                New Project
-                            </Button>
-                        </div>
-                    </header>
-
-                    {/* Chat Selection Content */}
-                    <div className="flex-1 flex items-center justify-center">
-                        <div className="text-center max-w-2xl px-6">
-                            <MessageSquare className="w-20 h-20 mx-auto mb-8 text-gray-600" />
-                            <h2 className="text-3xl font-bold mb-4">
-                                Welcome to vanadium
-                            </h2>
-                            <p className="text-xl text-gray-400 mb-8">
-                                Create stunning React applications with the power of AI. 
-                                Start a new project or select an existing one from the sidebar.
-                            </p>
-                            
-                            {chats.length > 0 ? (
-                                <div className="space-y-4">
-                                    <p className="text-gray-500">
-                                        You have {chats.length} project{chats.length !== 1 ? 's' : ''}
-                                    </p>
-                                    <div className="flex justify-center space-x-4">
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => setSidebarOpen(true)}
-                                        >
-                                            <Menu className="w-4 h-4 mr-2" />
-                                            Browse Projects
-                                        </Button>
-                                        <Button onClick={createNewProject} disabled={isLoading}>
-                                            {isLoading ? (
-                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                            ) : (
-                                                <Plus className="w-4 h-4 mr-2" />
-                                            )}
-                                            New Project
-                                        </Button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="space-y-6">
-                                    <p className="text-gray-500">
-                                        No projects yet. Create your first project to get started.
-                                    </p>
-                                    <Button size="lg" onClick={createNewProject} disabled={isLoading}>
-                                        {isLoading ? (
-                                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                                        ) : (
-                                            <Plus className="w-5 h-5 mr-2" />
-                                        )}
-                                        Create Your First Project
-                                    </Button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+            {/* Main Content */}
+            <div className="flex-1 flex flex-col host-grotesk-300">
+              {/* Header */}
+              <header className="border-b border-gray-800 p-4 flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setSidebarOpen(true)}
+                  >
+                    <Menu className="w-5 h-5" />
+                  </Button>
+                  <h1 className="text-xl font-semibold">vanadium.</h1>
                 </div>
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm text-gray-400">
+                    Welcome, {user?.username}
+                  </span>
+                  <Button onClick={createNewProject} disabled={isLoading}>
+                    {isLoading ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Plus className="w-4 h-4 mr-2" />
+                    )}
+                    New Project
+                  </Button>
+                </div>
+              </header>
+
+              {/* Chat Selection Content */}
+              <div className="flex-1 flex items-center justify-center host-grotesk-300">
+                <div className="text-center max-w-2xl px-6">
+                  <MessageSquare className="w-20 h-20 mx-auto mb-8 text-gray-600" />
+                  <h2 className="text-3xl font-bold mb-4">
+                    Welcome to vanadium
+                  </h2>
+                  <p className="text-xl text-gray-400 mb-8">
+                    Create stunning React applications with the power of AI.
+                    Start a new project or select an existing one from the
+                    sidebar.
+                  </p>
+
+                  {chats.length > 0 ? (
+                    <div className="space-y-4">
+                      <p className="text-gray-500">
+                        You have {chats.length} project
+                        {chats.length !== 1 ? "s" : ""}
+                      </p>
+                      <div className="flex justify-center space-x-4">
+                        <Button
+                          variant="outline"
+                          onClick={() => setSidebarOpen(true)}
+                          className="text-gray-900"
+                        >
+                          <Menu className="w-4 h-4 mr-2" />
+                          Browse Projects
+                        </Button>
+                        <Button onClick={createNewProject} disabled={isLoading}>
+                          {isLoading ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <Plus className="w-4 h-4 mr-2" />
+                          )}
+                          New Project
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      <p className="text-gray-500">
+                        No projects yet. Create your first project to get
+                        started.
+                      </p>
+                      <Button
+                        size="lg"
+                        onClick={createNewProject}
+                        disabled={isLoading}
+                      >
+                        {isLoading ? (
+                          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        ) : (
+                          <Plus className="w-5 h-5 mr-2" />
+                        )}
+                        Create Your First Project
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
+          </div>
         );
     }
 
     return (
-        <div className="h-screen bg-black text-white flex">
-            {/* Chat Sidebar */}
-            {sidebarOpen && (
-                <ChatSidebar
-                    chats={chats}
-                    currentChat={currentChat}
-                    onSelectChat={setCurrentChat}
-                    onClose={() => setSidebarOpen(false)}
-                    onNewProject={createNewProject}
-                />
+      <div className="h-screen bg-black text-white flex host-grotesk-300">
+        {/* Chat Sidebar */}
+        {sidebarOpen && (
+          <ChatSidebar
+            chats={chats}
+            currentChat={currentChat}
+            onSelectChat={setCurrentChat}
+            onClose={() => setSidebarOpen(false)}
+            onNewProject={createNewProject}
+          />
+        )}
+
+        {/* Chat Panel - Left Side */}
+        <div className="w-80 border-r border-gray-800 bg-gray-950 flex flex-col ">
+          {/* Chat Header */}
+          <div className="border-b border-gray-800 p-4 flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <Menu className="w-5 h-5" />
+              </Button>
+              <h3 className="text-sm font-medium text-gray-300">Chat</h3>
+            </div>
+            <Button onClick={createNewProject} disabled={isLoading} size="sm">
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : (
+                <Plus className="w-4 h-4 mr-1" />
+              )}
+              New
+            </Button>
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {messages.length === 0 ? (
+              <div className="text-center text-gray-500 py-8">
+                <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No messages yet</p>
+                <p className="text-xs">Start a conversation below</p>
+              </div>
+            ) : (
+              messages.map((message) => (
+                <div key={message.id.toString()} className="space-y-2">
+                  <div
+                    className={`flex ${
+                      "user" in message.sender ? "justify-end" : "justify-start"
+                    }`}
+                  >
+                    <div
+                      className={`max-w-[80%] rounded-lg p-3 text-sm ${
+                        "user" in message.sender
+                          ? "bg-purple-glow text-white"
+                          : "bg-gray-800 text-gray-100"
+                      }`}
+                    >
+                      <div className="whitespace-pre-wrap">
+                        {message.content}
+                      </div>
+                      <div className="text-xs opacity-70 mt-1">
+                        {formatTimestamp(message.createdAt)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
             )}
+          </div>
 
-            {/* Chat Panel - Left Side */}
-            <div className="w-80 border-r border-gray-800 bg-gray-950 flex flex-col">
-                {/* Chat Header */}
-                <div className="border-b border-gray-800 p-4 flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setSidebarOpen(true)}
-                        >
-                            <Menu className="w-5 h-5" />
-                        </Button>
-                        <h3 className="text-sm font-medium text-gray-300">Chat</h3>
-                    </div>
-                    <Button onClick={createNewProject} disabled={isLoading} size="sm">
-                        {isLoading ? (
-                            <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                        ) : (
-                            <Plus className="w-4 h-4 mr-1" />
-                        )}
-                        New
-                    </Button>
-                </div>
-
-                {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                    {messages.length === 0 ? (
-                        <div className="text-center text-gray-500 py-8">
-                            <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                            <p className="text-sm">No messages yet</p>
-                            <p className="text-xs">Start a conversation below</p>
-                        </div>
-                    ) : (
-                        messages.map((message) => (
-                            <div key={message.id.toString()} className="space-y-2">
-                                <div className={`flex ${
-                                    "user" in message.sender ? "justify-end" : "justify-start"
-                                }`}>
-                                    <div className={`max-w-[80%] rounded-lg p-3 text-sm ${
-                                        "user" in message.sender
-                                            ? "bg-purple-glow text-white"
-                                            : "bg-gray-800 text-gray-100"
-                                    }`}>
-                                        <div className="whitespace-pre-wrap">{message.content}</div>
-                                        <div className="text-xs opacity-70 mt-1">
-                                            {formatTimestamp(message.createdAt)}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>
-
-                {/* Chat Input */}
-                <div className="border-t border-gray-800 p-4">
-                    <div className="flex space-x-2">
-                        <Textarea
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            placeholder={
-                                activeTab === "canvas" 
-                                    ? "Describe what you want to build (canvas will be included)..." 
-                                    : "Describe what you want to build..."
-                            }
-                            className="flex-1 min-h-[60px] resize-none text-sm"
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" && !e.shiftKey) {
-                                    e.preventDefault();
-                                    sendMessage();
-                                }
-                            }}
-                        />
-                        <Button onClick={sendMessage} disabled={isLoading || !input.trim()} size="icon">
-                            {isLoading ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                                <Send className="w-4 h-4" />
-                            )}
-                        </Button>
-                    </div>
-                    {activeTab === "canvas" && (
-                        <p className="text-xs text-gray-500 mt-2">
-                            💡 Your canvas drawing will be included with your prompt
-                        </p>
-                    )}
-                </div>
+          {/* Chat Input */}
+          <div className="border-t border-gray-800 p-4">
+            <div className="flex space-x-2">
+              <Textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder={
+                  activeTab === "canvas"
+                    ? "Describe what you want to build (canvas will be included)..."
+                    : "Describe what you want to build..."
+                }
+                className="flex-1 min-h-[60px] resize-none text-sm"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                  }
+                }}
+              />
+              <Button
+                onClick={sendMessage}
+                disabled={isLoading || !input.trim()}
+                size="icon"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+              </Button>
             </div>
-
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col">
-                {/* Header */}
-                <header className="border-b border-gray-800 p-4 flex items-center justify-between">
-                    <h1 className="text-xl font-semibold">
-                        Project {currentChat}
-                    </h1>
-                    <div className="flex items-center space-x-4">
-                        <span className="text-sm text-gray-400">
-                            Welcome, {user?.username}
-                        </span>
-                    </div>
-                </header>
-
-                {/* Main Layout */}
-                <div className="flex-1 flex">
-                    {/* File Explorer */}
-                    <div className="w-64 border-r border-gray-800 bg-gray-950">
-                        <div className="p-3 border-b border-gray-800">
-                            <h3 className="text-sm font-medium text-gray-300">Explorer</h3>
-                        </div>
-                        <div className="overflow-y-auto">
-                            {fileTree.length > 0 ? (
-                                renderFileTree(fileTree)
-                            ) : (
-                                <div className="p-4 text-sm text-gray-500 text-center">
-                                    No files yet
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Editor and Preview */}
-                    <div className="flex-1 flex flex-col">
-                        {/* Tab Navigation */}
-                        <div className="border-b border-gray-800 bg-gray-900">
-                            <div className="flex">
-                                <button
-                                    onClick={() => setActiveTab("code")}
-                                    className={`flex items-center px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                                        activeTab === "code"
-                                            ? "border-purple-glow text-white bg-gray-800"
-                                            : "border-transparent text-gray-400 hover:text-white hover:bg-gray-800"
-                                    }`}
-                                >
-                                    <Code className="w-4 h-4 mr-2" />
-                                    Code
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab("preview")}
-                                    className={`flex items-center px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                                        activeTab === "preview"
-                                            ? "border-purple-glow text-white bg-gray-800"
-                                            : "border-transparent text-gray-400 hover:text-white hover:bg-gray-800"
-                                    }`}
-                                >
-                                    <Eye className="w-4 h-4 mr-2" />
-                                    Preview
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab("canvas")}
-                                    className={`flex items-center px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                                        activeTab === "canvas"
-                                            ? "border-purple-glow text-white bg-gray-800"
-                                            : "border-transparent text-gray-400 hover:text-white hover:bg-gray-800"
-                                    }`}
-                                >
-                                    <Palette className="w-4 h-4 mr-2" />
-                                    Canvas
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Tab Content */}
-                        <div className="flex-1 flex">
-                            {activeTab === "code" && (
-                                <div className="flex-1 flex flex-col">
-                                    {selectedFile ? (
-                                        <>
-                                            <div className="border-b border-gray-800 p-2 bg-gray-900">
-                                                <span className="text-sm text-gray-300">
-                                                    {selectedFile.name}
-                                                </span>
-                                            </div>
-                                            <div className="flex-1">
-                                                <CodeEditor
-                                                    code={selectedFile.content || ""}
-                                                    onChange={updateFileContent}
-                                                />
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div className="flex-1 flex items-center justify-center text-gray-500">
-                                            Select a file to edit
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {activeTab === "preview" && (
-                                <div className="flex-1">
-                                    {previewUrl ? (
-                                        <iframe
-                                            src={previewUrl}
-                                            className="w-full h-full border-0"
-                                            title="Preview"
-                                        />
-                                    ) : (
-                                        <div className="flex items-center justify-center h-full text-gray-500">
-                                            {isWebContainerReady ? "Starting preview..." : "Loading WebContainer..."}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {activeTab === "canvas" && (
-                                <div className="flex-1 flex">
-                                    {/* Canvas */}
-                                    <div className="flex-1 relative">
-                                        <CanvasPane />
-                                        <canvas
-                                            ref={canvasRef}
-                                            className="absolute inset-0 pointer-events-none opacity-0"
-                                            width={800}
-                                            height={600}
-                                        />
-                                    </div>
-
-                                    {/* Preview (unclickable) */}
-                                    <div className="w-1/2 border-l border-gray-800 relative">
-                                        <div className="border-b border-gray-800 p-2 bg-gray-900">
-                                            <span className="text-sm text-gray-300">Preview (Read-only)</span>
-                                        </div>
-                                        <div className="h-full relative">
-                                            {previewUrl ? (
-                                                <>
-                                                    <iframe
-                                                        src={previewUrl}
-                                                        className="w-full h-full border-0"
-                                                        title="Preview"
-                                                    />
-                                                    {/* Overlay to make preview unclickable */}
-                                                    <div className="absolute inset-0 bg-transparent cursor-not-allowed" />
-                                                </>
-                                            ) : (
-                                                <div className="flex items-center justify-center h-full text-gray-500">
-                                                    {isWebContainerReady ? "Starting preview..." : "Loading WebContainer..."}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
+            {activeTab === "canvas" && (
+              <p className="text-xs text-gray-500 mt-2">
+                💡 Your canvas drawing will be included with your prompt
+              </p>
+            )}
+          </div>
         </div>
+
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col">
+          {/* Header */}
+          <header className="border-b border-gray-800 p-4 flex items-center justify-between">
+            <h1 className="text-xl font-semibold">Project {currentChat}</h1>
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-400">
+                Welcome, {user?.username}
+              </span>
+            </div>
+          </header>
+
+          {/* Main Layout */}
+          <div className="flex-1 flex">
+            {/* File Explorer */}
+            <div className="w-64 border-r border-gray-800 bg-gray-950">
+              <div className="p-3 border-b border-gray-800">
+                <h3 className="text-sm font-medium text-gray-300">Explorer</h3>
+              </div>
+              <div className="overflow-y-auto">
+                {fileTree.length > 0 ? (
+                  renderFileTree(fileTree)
+                ) : (
+                  <div className="p-4 text-sm text-gray-500 text-center">
+                    No files yet
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Editor and Preview */}
+            <div className="flex-1 flex flex-col">
+              {/* Tab Navigation */}
+              <div className="border-b border-gray-800 bg-gray-900">
+                <div className="flex">
+                  <button
+                    onClick={() => setActiveTab("code")}
+                    className={`flex items-center px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === "code"
+                        ? "border-purple-glow text-white bg-gray-800"
+                        : "border-transparent text-gray-400 hover:text-white hover:bg-gray-800"
+                    }`}
+                  >
+                    <Code className="w-4 h-4 mr-2" />
+                    Code
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("preview")}
+                    className={`flex items-center px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === "preview"
+                        ? "border-purple-glow text-white bg-gray-800"
+                        : "border-transparent text-gray-400 hover:text-white hover:bg-gray-800"
+                    }`}
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    Preview
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("canvas")}
+                    className={`flex items-center px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === "canvas"
+                        ? "border-purple-glow text-white bg-gray-800"
+                        : "border-transparent text-gray-400 hover:text-white hover:bg-gray-800"
+                    }`}
+                  >
+                    <Palette className="w-4 h-4 mr-2" />
+                    Canvas
+                  </button>
+                </div>
+              </div>
+
+              {/* Tab Content */}
+              <div className="flex-1 flex">
+                {activeTab === "code" && (
+                  <div className="flex-1 flex flex-col">
+                    {selectedFile ? (
+                      <>
+                        <div className="border-b border-gray-800 p-2 bg-gray-900">
+                          <span className="text-sm text-gray-300">
+                            {selectedFile.name}
+                          </span>
+                        </div>
+                        <div className="flex-1">
+                          <CodeEditor
+                            code={selectedFile.content || ""}
+                            onChange={updateFileContent}
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center text-gray-500">
+                        Select a file to edit
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === "preview" && (
+                  <div className="flex-1">
+                    {previewUrl ? (
+                      <iframe
+                        src={previewUrl}
+                        className="w-full h-full border-0"
+                        title="Preview"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-gray-500">
+                        {isWebContainerReady
+                          ? "Starting preview..."
+                          : "Loading WebContainer..."}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === "canvas" && (
+                  <div className="flex-1 flex">
+                    {/* Canvas */}
+                    <div className="flex-1 relative">
+                      <CanvasPane />
+                      <canvas
+                        ref={canvasRef}
+                        className="absolute inset-0 pointer-events-none opacity-0"
+                        width={800}
+                        height={600}
+                      />
+                    </div>
+
+                    {/* Preview (unclickable) */}
+                    <div className="w-1/2 border-l border-gray-800 relative">
+                      <div className="border-b border-gray-800 p-2 bg-gray-900">
+                        <span className="text-sm text-gray-300">
+                          Preview (Read-only)
+                        </span>
+                      </div>
+                      <div className="h-full relative">
+                        {previewUrl ? (
+                          <>
+                            <iframe
+                              src={previewUrl}
+                              className="w-full h-full border-0"
+                              title="Preview"
+                            />
+                            {/* Overlay to make preview unclickable */}
+                            <div className="absolute inset-0 bg-transparent cursor-not-allowed" />
+                          </>
+                        ) : (
+                          <div className="flex items-center justify-center h-full text-gray-500">
+                            {isWebContainerReady
+                              ? "Starting preview..."
+                              : "Loading WebContainer..."}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     );
 };
 

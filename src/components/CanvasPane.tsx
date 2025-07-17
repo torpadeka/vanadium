@@ -1,5 +1,12 @@
 import React, { useRef, useState, useEffect } from "react";
-import { Square, Type, MousePointer, Move, Edit3, Trash2 } from "lucide-react";
+import {
+    Square,
+    Type,
+    MousePointer,
+    Trash2,
+    Camera,
+    CameraOff,
+} from "lucide-react";
 
 interface CanvasElement {
     id: string;
@@ -22,8 +29,19 @@ interface ResizeHandle {
 
 type Tool = "select" | "box" | "text";
 
-const CanvasPane: React.FC = () => {
+interface CanvasPaneProps {
+    onCanvasCapture?: (dataUrl: string, description: string) => void;
+    showPreview?: boolean;
+    previewContent?: React.ReactNode;
+}
+
+const CanvasPane: React.FC<CanvasPaneProps> = ({
+    onCanvasCapture,
+    showPreview = false,
+    previewContent,
+}) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const previewRef = useRef<HTMLDivElement>(null);
     const [elements, setElements] = useState<CanvasElement[]>([]);
     const [selectedTool, setSelectedTool] = useState<Tool>("select");
     const [isDrawing, setIsDrawing] = useState(false);
@@ -35,6 +53,7 @@ const CanvasPane: React.FC = () => {
     const [resizeHandle, setResizeHandle] = useState<string | null>(null);
     const [editingText, setEditingText] = useState<string | null>(null);
     const [textInput, setTextInput] = useState("");
+    const [canvasEnabled, setCanvasEnabled] = useState(true);
 
     useEffect(() => {
         redrawCanvas();
@@ -77,22 +96,25 @@ const CanvasPane: React.FC = () => {
                 ctx.font = "14px Inter, sans-serif";
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
-                
+
                 // Word wrap for text
-                const words = element.text.split(' ');
+                const words = element.text.split(" ");
                 const maxWidth = element.width - 16;
                 const lineHeight = 18;
-                let line = '';
-                let y = element.y + element.height / 2 - (Math.ceil(words.length / 3) * lineHeight) / 2;
+                let line = "";
+                let y =
+                    element.y +
+                    element.height / 2 -
+                    (Math.ceil(words.length / 3) * lineHeight) / 2;
 
                 for (let n = 0; n < words.length; n++) {
-                    const testLine = line + words[n] + ' ';
+                    const testLine = line + words[n] + " ";
                     const metrics = ctx.measureText(testLine);
                     const testWidth = metrics.width;
-                    
+
                     if (testWidth > maxWidth && n > 0) {
                         ctx.fillText(line, element.x + element.width / 2, y);
-                        line = words[n] + ' ';
+                        line = words[n] + " ";
                         y += lineHeight;
                     } else {
                         line = testLine;
@@ -102,21 +124,24 @@ const CanvasPane: React.FC = () => {
             }
 
             // Draw selection handles
-            if (selectedElement === element.id) {
+            if (selectedElement === element.id && canvasEnabled) {
                 drawSelectionHandles(ctx, element);
             }
         });
     };
 
-    const drawSelectionHandles = (ctx: CanvasRenderingContext2D, element: CanvasElement) => {
+    const drawSelectionHandles = (
+        ctx: CanvasRenderingContext2D,
+        element: CanvasElement
+    ) => {
         const handleSize = 8;
         const handles = getResizeHandles(element);
-        
+
         ctx.fillStyle = "#8B5CF6";
         ctx.strokeStyle = "#FFFFFF";
         ctx.lineWidth = 2;
 
-        handles.forEach(handle => {
+        handles.forEach((handle) => {
             ctx.fillRect(
                 handle.x - handleSize / 2,
                 handle.y - handleSize / 2,
@@ -135,13 +160,48 @@ const CanvasPane: React.FC = () => {
     const getResizeHandles = (element: CanvasElement): ResizeHandle[] => {
         return [
             { x: element.x, y: element.y, cursor: "nw-resize", position: "nw" },
-            { x: element.x + element.width / 2, y: element.y, cursor: "n-resize", position: "n" },
-            { x: element.x + element.width, y: element.y, cursor: "ne-resize", position: "ne" },
-            { x: element.x + element.width, y: element.y + element.height / 2, cursor: "e-resize", position: "e" },
-            { x: element.x + element.width, y: element.y + element.height, cursor: "se-resize", position: "se" },
-            { x: element.x + element.width / 2, y: element.y + element.height, cursor: "s-resize", position: "s" },
-            { x: element.x, y: element.y + element.height, cursor: "sw-resize", position: "sw" },
-            { x: element.x, y: element.y + element.height / 2, cursor: "w-resize", position: "w" },
+            {
+                x: element.x + element.width / 2,
+                y: element.y,
+                cursor: "n-resize",
+                position: "n",
+            },
+            {
+                x: element.x + element.width,
+                y: element.y,
+                cursor: "ne-resize",
+                position: "ne",
+            },
+            {
+                x: element.x + element.width,
+                y: element.y + element.height / 2,
+                cursor: "e-resize",
+                position: "e",
+            },
+            {
+                x: element.x + element.width,
+                y: element.y + element.height,
+                cursor: "se-resize",
+                position: "se",
+            },
+            {
+                x: element.x + element.width / 2,
+                y: element.y + element.height,
+                cursor: "s-resize",
+                position: "s",
+            },
+            {
+                x: element.x,
+                y: element.y + element.height,
+                cursor: "sw-resize",
+                position: "sw",
+            },
+            {
+                x: element.x,
+                y: element.y + element.height / 2,
+                cursor: "w-resize",
+                position: "w",
+            },
         ];
     };
 
@@ -152,7 +212,7 @@ const CanvasPane: React.FC = () => {
         const rect = canvas.getBoundingClientRect();
         return {
             x: e.clientX - rect.left,
-            y: e.clientY - rect.top
+            y: e.clientY - rect.top,
         };
     };
 
@@ -172,7 +232,11 @@ const CanvasPane: React.FC = () => {
         return null;
     };
 
-    const findResizeHandle = (x: number, y: number, element: CanvasElement): string | null => {
+    const findResizeHandle = (
+        x: number,
+        y: number,
+        element: CanvasElement
+    ): string | null => {
         const handles = getResizeHandles(element);
         const handleSize = 8;
 
@@ -190,11 +254,15 @@ const CanvasPane: React.FC = () => {
     };
 
     const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        if (!canvasEnabled) return;
+
         const { x, y } = getMousePos(e);
 
         if (selectedTool === "select") {
-            const selectedEl = selectedElement ? elements.find(el => el.id === selectedElement) : null;
-            
+            const selectedEl = selectedElement
+                ? elements.find((el) => el.id === selectedElement)
+                : null;
+
             if (selectedEl) {
                 const handle = findResizeHandle(x, y, selectedEl);
                 if (handle) {
@@ -211,7 +279,7 @@ const CanvasPane: React.FC = () => {
                 setIsDragging(true);
                 setDragOffset({
                     x: x - clickedElement.x,
-                    y: y - clickedElement.y
+                    y: y - clickedElement.y,
                 });
             } else {
                 setSelectedElement(null);
@@ -223,17 +291,21 @@ const CanvasPane: React.FC = () => {
     };
 
     const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        if (!canvasEnabled) return;
+
         const { x, y } = getMousePos(e);
         const canvas = canvasRef.current;
         if (!canvas) return;
 
         // Update cursor based on hover state
         if (selectedTool === "select" && selectedElement) {
-            const selectedEl = elements.find(el => el.id === selectedElement);
+            const selectedEl = elements.find((el) => el.id === selectedElement);
             if (selectedEl) {
                 const handle = findResizeHandle(x, y, selectedEl);
                 if (handle) {
-                    const handleInfo = getResizeHandles(selectedEl).find(h => h.position === handle);
+                    const handleInfo = getResizeHandles(selectedEl).find(
+                        (h) => h.position === handle
+                    );
                     canvas.style.cursor = handleInfo?.cursor || "default";
                 } else if (findElementAt(x, y)) {
                     canvas.style.cursor = "move";
@@ -248,11 +320,11 @@ const CanvasPane: React.FC = () => {
         }
 
         if (isResizing && selectedElement && resizeHandle) {
-            const selectedEl = elements.find(el => el.id === selectedElement);
+            const selectedEl = elements.find((el) => el.id === selectedElement);
             if (selectedEl) {
                 const deltaX = x - startPos.x;
                 const deltaY = y - startPos.y;
-                
+
                 let newX = selectedEl.x;
                 let newY = selectedEl.y;
                 let newWidth = selectedEl.width;
@@ -298,32 +370,44 @@ const CanvasPane: React.FC = () => {
                 // Minimum size constraints
                 if (newWidth < 20) {
                     newWidth = 20;
-                    if (resizeHandle.includes("w")) newX = selectedEl.x + selectedEl.width - 20;
+                    if (resizeHandle.includes("w"))
+                        newX = selectedEl.x + selectedEl.width - 20;
                 }
                 if (newHeight < 20) {
                     newHeight = 20;
-                    if (resizeHandle.includes("n")) newY = selectedEl.y + selectedEl.height - 20;
+                    if (resizeHandle.includes("n"))
+                        newY = selectedEl.y + selectedEl.height - 20;
                 }
 
-                setElements(prev => prev.map(el => 
-                    el.id === selectedElement 
-                        ? { ...el, x: newX, y: newY, width: newWidth, height: newHeight }
-                        : el
-                ));
+                setElements((prev) =>
+                    prev.map((el) =>
+                        el.id === selectedElement
+                            ? {
+                                  ...el,
+                                  x: newX,
+                                  y: newY,
+                                  width: newWidth,
+                                  height: newHeight,
+                              }
+                            : el
+                    )
+                );
                 setStartPos({ x, y });
             }
         } else if (isDragging && selectedElement) {
             const newX = x - dragOffset.x;
             const newY = y - dragOffset.y;
-            
-            setElements(prev => prev.map(el => 
-                el.id === selectedElement 
-                    ? { ...el, x: Math.max(0, newX), y: Math.max(0, newY) }
-                    : el
-            ));
+
+            setElements((prev) =>
+                prev.map((el) =>
+                    el.id === selectedElement
+                        ? { ...el, x: Math.max(0, newX), y: Math.max(0, newY) }
+                        : el
+                )
+            );
         } else if (isDrawing) {
             redrawCanvas();
-            
+
             const ctx = canvas.getContext("2d");
             if (ctx) {
                 ctx.strokeStyle = "#8B5CF6";
@@ -341,6 +425,8 @@ const CanvasPane: React.FC = () => {
     };
 
     const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        if (!canvasEnabled) return;
+
         const { x, y } = getMousePos(e);
 
         if (isDrawing) {
@@ -355,11 +441,14 @@ const CanvasPane: React.FC = () => {
                     y: Math.min(startPos.y, y),
                     width,
                     height,
-                    text: selectedTool === "text" ? "Double-click to edit" : undefined,
+                    text:
+                        selectedTool === "text"
+                            ? "Double-click to edit"
+                            : undefined,
                     color: "#8B5CF6",
                 };
 
-                setElements(prev => [...prev, newElement]);
+                setElements((prev) => [...prev, newElement]);
                 setSelectedElement(newElement.id);
             }
         }
@@ -371,11 +460,11 @@ const CanvasPane: React.FC = () => {
     };
 
     const handleDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-        if (selectedTool !== "select") return;
+        if (!canvasEnabled || selectedTool !== "select") return;
 
         const { x, y } = getMousePos(e);
         const clickedElement = findElementAt(x, y);
-        
+
         if (clickedElement && clickedElement.type === "text") {
             setEditingText(clickedElement.id);
             setTextInput(clickedElement.text || "");
@@ -384,11 +473,11 @@ const CanvasPane: React.FC = () => {
 
     const handleTextSubmit = () => {
         if (editingText) {
-            setElements(prev => prev.map(el => 
-                el.id === editingText 
-                    ? { ...el, text: textInput }
-                    : el
-            ));
+            setElements((prev) =>
+                prev.map((el) =>
+                    el.id === editingText ? { ...el, text: textInput } : el
+                )
+            );
             setEditingText(null);
             setTextInput("");
         }
@@ -396,7 +485,9 @@ const CanvasPane: React.FC = () => {
 
     const deleteSelectedElement = () => {
         if (selectedElement) {
-            setElements(prev => prev.filter(el => el.id !== selectedElement));
+            setElements((prev) =>
+                prev.filter((el) => el.id !== selectedElement)
+            );
             setSelectedElement(null);
         }
     };
@@ -404,6 +495,29 @@ const CanvasPane: React.FC = () => {
     const clearCanvas = () => {
         setElements([]);
         setSelectedElement(null);
+    };
+
+    const captureCanvas = () => {
+        const canvas = canvasRef.current;
+        if (!canvas || !onCanvasCapture) return;
+
+        const dataUrl = canvas.toDataURL("image/png");
+        const description = generateCanvasDescription();
+        onCanvasCapture(dataUrl, description);
+    };
+
+    const generateCanvasDescription = (): string => {
+        if (elements.length === 0) return "Empty canvas";
+
+        const descriptions = elements.map((element) => {
+            const type = element.type === "box" ? "rectangle" : "text box";
+            const position = `at position (${Math.round(element.x)}, ${Math.round(element.y)})`;
+            const size = `with size ${Math.round(element.width)}x${Math.round(element.height)}`;
+            const content = element.text ? ` containing "${element.text}"` : "";
+            return `${type} ${position} ${size}${content}`;
+        });
+
+        return `Canvas with ${elements.length} element${elements.length !== 1 ? "s" : ""}: ${descriptions.join(", ")}`;
     };
 
     return (
@@ -419,6 +533,7 @@ const CanvasPane: React.FC = () => {
                                 : "bg-gray-800 text-gray-400 hover:text-white"
                         }`}
                         title="Select"
+                        disabled={!canvasEnabled}
                     >
                         <MousePointer className="w-4 h-4" />
                     </button>
@@ -430,6 +545,7 @@ const CanvasPane: React.FC = () => {
                                 : "bg-gray-800 text-gray-400 hover:text-white"
                         }`}
                         title="Rectangle"
+                        disabled={!canvasEnabled}
                     >
                         <Square className="w-4 h-4" />
                     </button>
@@ -441,13 +557,23 @@ const CanvasPane: React.FC = () => {
                                 : "bg-gray-800 text-gray-400 hover:text-white"
                         }`}
                         title="Text Box"
+                        disabled={!canvasEnabled}
                     >
                         <Type className="w-4 h-4" />
                     </button>
                 </div>
 
                 <div className="flex items-center space-x-2">
-                    {selectedElement && (
+                    {onCanvasCapture && (
+                        <button
+                            onClick={captureCanvas}
+                            className="p-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                            title="Capture Canvas"
+                        >
+                            <Camera className="w-4 h-4" />
+                        </button>
+                    )}
+                    {selectedElement && canvasEnabled && (
                         <button
                             onClick={deleteSelectedElement}
                             className="p-2 rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors"
@@ -459,30 +585,68 @@ const CanvasPane: React.FC = () => {
                     <button
                         onClick={clearCanvas}
                         className="px-3 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                        disabled={!canvasEnabled}
                     >
                         Clear All
                     </button>
                 </div>
             </div>
 
-            {/* Canvas */}
-            <div className="flex-1 relative overflow-hidden">
-                <canvas
-                    ref={canvasRef}
-                    width={1200}
-                    height={800}
-                    className="absolute inset-0 cursor-crosshair bg-gray-900"
-                    onMouseDown={handleMouseDown}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                    onDoubleClick={handleDoubleClick}
-                />
+            {/* Canvas and Preview Container */}
+            <div className="flex-1 relative">
+                {showPreview && (
+                    <div className="absolute inset-0 flex flex-col">
+                        {/* Canvas Layer */}
+                        <div
+                            className="relative z-10 bg-gray-900"
+                            style={{ height: "400px" }}
+                        >
+                            <canvas
+                                ref={canvasRef}
+                                width={1200}
+                                height={400}
+                                className="absolute inset-0 cursor-crosshair"
+                                onMouseDown={handleMouseDown}
+                                onMouseMove={handleMouseMove}
+                                onMouseUp={handleMouseUp}
+                                onDoubleClick={handleDoubleClick}
+                            />
+                        </div>
+
+                        {/* Preview Layer */}
+                        <div className="flex-1 relative">
+                            <div
+                                ref={previewRef}
+                                className="absolute inset-0 bg-white"
+                            >
+                                {previewContent}
+                            </div>
+                            {/* Overlay to make preview unclickable */}
+                            <div className="absolute inset-0 bg-transparent cursor-not-allowed z-10" />
+                        </div>
+                    </div>
+                )}
+
+                {!showPreview && (
+                    <canvas
+                        ref={canvasRef}
+                        width={1200}
+                        height={800}
+                        className="absolute inset-0 cursor-crosshair bg-gray-900"
+                        onMouseDown={handleMouseDown}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onDoubleClick={handleDoubleClick}
+                    />
+                )}
 
                 {/* Text Editing Modal */}
                 {editingText && (
-                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10">
+                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20">
                         <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-                            <h3 className="text-lg font-medium text-white mb-4">Edit Text</h3>
+                            <h3 className="text-lg font-medium text-white mb-4">
+                                Edit Text
+                            </h3>
                             <textarea
                                 value={textInput}
                                 onChange={(e) => setTextInput(e.target.value)}
@@ -513,7 +677,7 @@ const CanvasPane: React.FC = () => {
             </div>
 
             {/* Element List */}
-            {elements.length > 0 && (
+            {elements.length > 0 && !showPreview && (
                 <div className="border-t border-gray-800 p-4 max-h-40 overflow-y-auto">
                     <h3 className="text-sm font-medium text-gray-300 mb-2">
                         Elements ({elements.length})
@@ -522,7 +686,10 @@ const CanvasPane: React.FC = () => {
                         {elements.map((element) => (
                             <div
                                 key={element.id}
-                                onClick={() => setSelectedElement(element.id)}
+                                onClick={() =>
+                                    canvasEnabled &&
+                                    setSelectedElement(element.id)
+                                }
                                 className={`text-xs p-2 rounded cursor-pointer transition-colors flex items-center justify-between ${
                                     selectedElement === element.id
                                         ? "bg-purple-glow/20 text-purple-200"
@@ -538,20 +705,23 @@ const CanvasPane: React.FC = () => {
                                     <span>
                                         {element.text?.substring(0, 20) ||
                                             `${element.type} (${Math.round(element.width)}×${Math.round(element.height)})`}
-                                        {element.text && element.text.length > 20 && "..."}
+                                        {element.text &&
+                                            element.text.length > 20 &&
+                                            "..."}
                                     </span>
                                 </div>
-                                {selectedElement === element.id && (
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            deleteSelectedElement();
-                                        }}
-                                        className="text-red-400 hover:text-red-300"
-                                    >
-                                        <Trash2 className="w-3 h-3" />
-                                    </button>
-                                )}
+                                {selectedElement === element.id &&
+                                    canvasEnabled && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                deleteSelectedElement();
+                                            }}
+                                            className="text-red-400 hover:text-red-300"
+                                        >
+                                            <Trash2 className="w-3 h-3" />
+                                        </button>
+                                    )}
                             </div>
                         ))}
                     </div>
@@ -559,14 +729,18 @@ const CanvasPane: React.FC = () => {
             )}
 
             {/* Instructions */}
-            <div className="border-t border-gray-800 p-3 bg-gray-900">
-                <div className="text-xs text-gray-500 space-y-1">
-                    <p>• Select tool and drag to create shapes</p>
-                    <p>• Use Select tool to move and resize elements</p>
-                    <p>• Double-click text boxes to edit content</p>
-                    <p>• Canvas content will be included when prompting AI</p>
+            {!showPreview && (
+                <div className="border-t border-gray-800 p-3 bg-gray-900">
+                    <div className="text-xs text-gray-500 space-y-1">
+                        <p>• Select tool and drag to create shapes</p>
+                        <p>• Use Select tool to move and resize elements</p>
+                        <p>• Double-click text boxes to edit content</p>
+                        <p>
+                            • Canvas content will be included when prompting AI
+                        </p>
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 };

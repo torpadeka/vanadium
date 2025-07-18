@@ -42,6 +42,7 @@ interface FileNode {
     children?: FileNode[];
     parentId?: number;
     isOpen?: boolean;
+    path?: string; // Added path property
 }
 
 type TabType = "code" | "preview" | "canvas";
@@ -149,7 +150,6 @@ const Z9Page: React.FC = () => {
 
     const loadProjectFiles = async (chatId: number) => {
         try {
-            // Get project versions for this chat
             const versionsResult =
                 await chatHandler.current.getAllProjectVersionByChatId(chatId);
             if ("ok" in versionsResult && versionsResult.ok.length > 0) {
@@ -157,7 +157,6 @@ const Z9Page: React.FC = () => {
                     versionsResult.ok[versionsResult.ok.length - 1];
                 setCurrentProjectVersion(latestVersion);
 
-                // Get files and folders for the latest version
                 const [filesResult, foldersResult] = await Promise.all([
                     chatHandler.current.getAllFileByProjectVersionId(
                         Number(latestVersion.id)
@@ -171,12 +170,21 @@ const Z9Page: React.FC = () => {
                     const files = filesResult.ok;
                     const folders = foldersResult.ok;
 
-                    // Build file tree
+                    // Rebuild file tree
                     const tree = buildFileTree(files, folders);
                     setFileTree(tree);
 
-                    // Mount files to WebContainer
+                    // Sync with WebContainer
                     await mountFilesToWebContainer(files, folders);
+                    console.log(
+                        "Rebuilt fileTree:",
+                        tree.map((n) => ({
+                            id: n.id,
+                            name: n.name,
+                            path: n.path,
+                            parentId: n.parentId,
+                        }))
+                    );
                 }
             }
         } catch (error) {
@@ -191,7 +199,7 @@ const Z9Page: React.FC = () => {
         const nodeMap = new Map<number, FileNode>();
         const rootNodes: FileNode[] = [];
 
-        // Create folder nodes
+        // Create folder nodes with paths
         folders.forEach((folder) => {
             const node: FileNode = {
                 id: Number(folder.id),
@@ -202,11 +210,12 @@ const Z9Page: React.FC = () => {
                     ? Number(folder.parentId[0])
                     : undefined,
                 isOpen: false,
+                path: getFolderPath(folder, folders),
             };
             nodeMap.set(Number(folder.id), node);
         });
 
-        // Create file nodes
+        // Create file nodes with paths and infer parentId from path if missing
         files.forEach((file) => {
             const node: FileNode = {
                 id: Number(file.id),
@@ -216,7 +225,22 @@ const Z9Page: React.FC = () => {
                 parentId: file.folderId?.[0]
                     ? Number(file.folderId[0])
                     : undefined,
+                path: getFilePath(file, folders),
             };
+
+            // Infer parentId from path if not set
+            if (!node.parentId && node.path && node.path.includes("/")) {
+                const folderPath = node.path.substring(
+                    0,
+                    node.path.lastIndexOf("/")
+                );
+                const folder = folders.find(
+                    (f) => getFolderPath(f, folders) === folderPath
+                );
+                if (folder) {
+                    node.parentId = Number(folder.id);
+                }
+            }
             nodeMap.set(Number(file.id), node);
         });
 
@@ -224,31 +248,29 @@ const Z9Page: React.FC = () => {
         nodeMap.forEach((node) => {
             if (node.parentId && nodeMap.has(node.parentId)) {
                 const parent = nodeMap.get(node.parentId)!;
-                if (parent.children) {
-                    parent.children.push(node);
-                }
+                (parent.children = parent.children || []).push(node);
             } else {
                 rootNodes.push(node);
             }
         });
 
-        // Sort nodes (folders first, then files, both alphabetically)
+        // Sort and filter root nodes
         const sortNodes = (nodes: FileNode[]) => {
-            nodes.sort((a, b) => {
-                if (a.type !== b.type) {
-                    return a.type === "folder" ? -1 : 1;
-                }
-                return a.name.localeCompare(b.name);
-            });
-            nodes.forEach((node) => {
-                if (node.children) {
-                    sortNodes(node.children);
-                }
-            });
+            nodes.sort((a, b) =>
+                a.type !== b.type
+                    ? a.type === "folder"
+                        ? -1
+                        : 1
+                    : a.name.localeCompare(b.name)
+            );
+            nodes.forEach((node) => node.children && sortNodes(node.children));
         };
-
         sortNodes(rootNodes);
-        return rootNodes;
+
+        const finalRootNodes = rootNodes.filter(
+            (node) => node.type === "folder" || !node.parentId
+        );
+        return finalRootNodes;
     };
 
     const mountFilesToWebContainer = async (
@@ -731,7 +753,19 @@ button:focus-visible {
                         fileResult.err
                     );
                 } else {
-                    console.log(`Successfully created file: ${file.name}`);
+                    console.log(
+                        `Successfully created file: ${file.name}`,
+                        fileResult.ok
+                    );
+                    // Verify folderId in the response
+                    if (
+                        file.folderId &&
+                        fileResult.ok.folderId?.[0] !== file.folderId
+                    ) {
+                        console.warn(
+                            `FolderId mismatch for ${file.name}: expected ${file.folderId}, got ${fileResult.ok.folderId?.[0]}`
+                        );
+                    }
                 }
             }
 
@@ -896,23 +930,52 @@ button:focus-visible {
         path: string,
         nodes: FileNode[]
     ): number | undefined => {
-        const parts = path.split("/").slice(0, -1);
+        const parts = path
+            .split("/")
+            .filter((part) => part && part !== path.split("/").pop()); // Exclude file name
         let currentFolderId: number | undefined;
 
+        console.log("Resolving path:", path, "with folder parts:", parts);
+
         for (const part of parts) {
-            const folderNode = nodes.find(
-                (n) =>
-                    n.type === "folder" &&
-                    n.name === part &&
-                    (!currentFolderId || n.parentId === currentFolderId)
-            );
-            if (folderNode) {
-                currentFolderId = folderNode.id;
+            if (part === "src" && !currentFolderId) {
+                const srcNode = nodes.find(
+                    (n) =>
+                        n.type === "folder" && n.name === "src" && !n.parentId
+                );
+                if (srcNode) {
+                    currentFolderId = srcNode.id;
+                    console.log("Found src folder ID:", currentFolderId);
+                } else {
+                    console.warn(
+                        "src folder not found in root nodes:",
+                        nodes.map((n) => n.name)
+                    );
+                    return undefined;
+                }
             } else {
-                break;
+                const folderNode = nodes.find(
+                    (n) =>
+                        n.type === "folder" &&
+                        n.name === part &&
+                        (!currentFolderId || n.parentId === currentFolderId)
+                );
+                if (folderNode) {
+                    currentFolderId = folderNode.id;
+                    console.log(
+                        "Found folder ID for",
+                        part,
+                        ":",
+                        currentFolderId
+                    );
+                } else {
+                    console.warn(
+                        `Folder ${part} not found under parent ID ${currentFolderId}`
+                    );
+                    return undefined;
+                }
             }
         }
-
         return currentFolderId;
     };
 
@@ -920,8 +983,13 @@ button:focus-visible {
         path: string,
         nodes: FileNode[]
     ): FileNode | undefined => {
+        const baseName = path
+            .split("/")
+            .pop()!
+            .replace(/\.jsx$|\.tsx$/, ""); // Remove extension
         for (const node of nodes) {
-            if (`${node.name}` === path) return node;
+            const nodeBaseName = node.name.replace(/\.jsx$|\.tsx$/, "");
+            if (nodeBaseName === baseName) return node;
             if (node.children) {
                 const found = findFileNodeByPath(path, node.children);
                 if (found) return found;
@@ -976,8 +1044,28 @@ button:focus-visible {
             type: "file",
             content,
             parentId: getFolderIdFromPath(path, fileTree),
+            path, // Set path for new file
         };
-        setFileTree((prev) => [...prev, newNode]);
+        setFileTree((prev) => {
+            const updateTree = (nodes: FileNode[]): FileNode[] => {
+                return nodes.map((node) => {
+                    if (
+                        node.parentId === newNode.parentId &&
+                        node.type === "folder"
+                    ) {
+                        return {
+                            ...node,
+                            children: [...(node.children || []), newNode],
+                        };
+                    }
+                    if (node.children) {
+                        return { ...node, children: updateTree(node.children) };
+                    }
+                    return node;
+                });
+            };
+            return updateTree([...prev]);
+        });
     };
 
     const updateFileTreeAfterDeletion = (fileId: number) => {
@@ -994,6 +1082,7 @@ button:focus-visible {
             if (fileNode) {
                 fileNode.name = newPath.split("/").pop()!;
                 fileNode.parentId = getFolderIdFromPath(newPath, newTree);
+                fileNode.path = newPath; // Update path
             }
             return newTree;
         });
@@ -1077,6 +1166,41 @@ button:focus-visible {
         }
     };
 
+    const updateFileTreeWithExistingFile = async (node: FileNode) => {
+        setFileTree((prev) => {
+            const newTree = [...prev];
+            const updateNode = (nodes: FileNode[]): FileNode[] => {
+                for (let i = 0; i < nodes.length; i++) {
+                    if (nodes[i].id === node.id) {
+                        const updatedNode = {
+                            ...nodes[i],
+                            ...node,
+                            path: node.path,
+                            parentId: node.parentId,
+                        };
+                        nodes.splice(i, 1);
+                        const parentNode = newTree.find(
+                            (n) => n.id === node.parentId && n.type === "folder"
+                        );
+                        if (parentNode) {
+                            (parentNode.children =
+                                parentNode.children || []).push(updatedNode);
+                        } else if (!node.parentId) {
+                            newTree.push(updatedNode); // Keep at root if no parent
+                        }
+                        return nodes;
+                    }
+                    if (nodes[i].children) {
+                        nodes[i].children = updateNode(nodes[i].children ?? []); // Handle undefined case
+                    }
+                }
+                return nodes;
+            };
+            updateNode(newTree);
+            return newTree;
+        });
+    };
+
     const handleCodeProject = async (
         project: AIResponse["codeProject"],
         chatId: number
@@ -1087,118 +1211,111 @@ button:focus-visible {
 
         if (project && project.files) {
             for (const file of project.files) {
-                const folderId = getFolderIdFromPath(file.path, fileTree);
-                const existingFile = findFileNodeByPath(file.path, fileTree);
+                const fullPath = file.path;
+                const folderId =
+                    getFolderIdFromPath(fullPath, fileTree) ||
+                    (fullPath.startsWith("src/")
+                        ? fileTree.find(
+                              (n) =>
+                                  n.type === "folder" &&
+                                  n.name === "src" &&
+                                  !n.parentId
+                          )?.id
+                        : undefined);
+                const existingFile = findFileNodeByPath(fullPath, fileTree);
+
                 if (existingFile) {
-                    // Update existing file
                     await chatHandler.current.updateFile(
                         existingFile.id,
-                        undefined,
-                        undefined,
-                        file.content
-                    );
-                    await updateFileContent(file.content); // Update local state
-                    if (webContainer) {
-                        await webContainer.fs.writeFile(
-                            file.path,
-                            file.content
-                        );
-                    }
-                } else {
-                    // Create new file
-                    const fileResult = await chatHandler.current.createFile(
-                        versionId,
                         folderId,
-                        file.path.split("/").pop()!,
+                        undefined,
                         file.content
-                    );
-                    if ("ok" in fileResult) {
-                        const newFileId = Number(fileResult.ok.id);
-                        await updateFileTreeWithNewFile(
-                            newFileId,
-                            file.path,
+                    ); // Update folderId
+                    await updateFileContent(file.content);
+                    if (webContainer)
+                        await webContainer.fs.writeFile(fullPath, file.content);
+                    const updatedNode = {
+                        ...existingFile,
+                        content: file.content,
+                        path: fullPath,
+                        parentId: folderId,
+                    };
+                    await updateFileTreeWithExistingFile(updatedNode);
+                } else {
+                    const fileName = fullPath.split("/").pop()!;
+                    if (fullPath.startsWith("src/") && !folderId) {
+                        const srcNode = fileTree.find(
+                            (n) =>
+                                n.type === "folder" &&
+                                n.name === "src" &&
+                                !n.parentId
+                        );
+                        if (srcNode) {
+                            const newPath = `src/${fileName}`;
+                            const fileResult =
+                                await chatHandler.current.createFile(
+                                    versionId,
+                                    srcNode.id,
+                                    fileName,
+                                    file.content
+                                );
+                            if ("ok" in fileResult) {
+                                const newFileId = Number(fileResult.ok.id);
+                                await updateFileTreeWithNewFile(
+                                    newFileId,
+                                    newPath,
+                                    file.content
+                                );
+                                if (webContainer)
+                                    await webContainer.fs.writeFile(
+                                        newPath,
+                                        file.content
+                                    );
+                            }
+                        }
+                    } else if (folderId) {
+                        const fileResult = await chatHandler.current.createFile(
+                            versionId,
+                            folderId,
+                            fileName,
                             file.content
                         );
-                        if (webContainer) {
-                            await webContainer.fs.writeFile(
-                                file.path,
+                        if ("ok" in fileResult) {
+                            const newFileId = Number(fileResult.ok.id);
+                            await updateFileTreeWithNewFile(
+                                newFileId,
+                                fullPath,
                                 file.content
                             );
+                            if (webContainer)
+                                await webContainer.fs.writeFile(
+                                    fullPath,
+                                    file.content
+                                );
                         }
-                    }
-                }
-            }
-        }
-
-        // Handle quick edits
-        if (project && project.edits) {
-            for (const edit of project.edits) {
-                const fileNode = findFileNodeByPath(edit.path, fileTree);
-                if (fileNode && fileNode.content) {
-                    const updatedContent = applyQuickEdit(
-                        fileNode.content,
-                        edit.instructions
-                    );
-                    await updateFileContent(updatedContent);
-                }
-            }
-        }
-
-        // Handle file deletions
-        if (project && project.deleteFiles) {
-            for (const filePath of project.deleteFiles) {
-                const fileNode = findFileNodeByPath(filePath, fileTree);
-                if (fileNode) {
-                    await chatHandler.current.deleteFile(fileNode.id);
-                    await updateFileTreeAfterDeletion(fileNode.id);
-                    if (webContainer) {
-                        await webContainer.fs.rm(filePath);
-                    }
-                }
-            }
-        }
-
-        // Handle file moves using delete and create
-        if (project && project.moveFiles) {
-            for (const move of project.moveFiles) {
-                const fileNode = findFileNodeByPath(move.from, fileTree);
-                if (fileNode && fileNode.content) {
-                    // Delete the original file
-                    await chatHandler.current.deleteFile(fileNode.id);
-                    await updateFileTreeAfterDeletion(fileNode.id);
-                    if (webContainer) {
-                        await webContainer.fs.rm(move.from);
-                    }
-
-                    // Create the file at the new path
-                    const newFolderId = getFolderIdFromPath(move.to, fileTree);
-                    const newFileResult = await chatHandler.current.createFile(
-                        versionId,
-                        newFolderId,
-                        move.to.split("/").pop()!,
-                        fileNode.content
-                    );
-                    if ("ok" in newFileResult) {
-                        const newFileId = Number(newFileResult.ok.id);
-                        await updateFileTreeWithNewFile(
-                            newFileId,
-                            move.to,
-                            fileNode.content
+                    } else {
+                        await chatHandler.current.createFile(
+                            versionId,
+                            undefined,
+                            fileName,
+                            file.content
                         );
-                        if (webContainer) {
+                        await updateFileTreeWithNewFile(
+                            -1,
+                            fileName,
+                            file.content
+                        );
+                        if (webContainer)
                             await webContainer.fs.writeFile(
-                                move.to,
-                                fileNode.content
+                                fileName,
+                                file.content
                             );
-                            // Update imports in related files if needed
-                            await updateImportsAfterMove(move.from, move.to);
-                        }
                     }
                 }
             }
         }
 
-        await loadProjectFiles(chatId);
+        await loadProjectFiles(chatId); // Reload to sync with backend
     };
 
     const generateCanvasDescription = (): string => {

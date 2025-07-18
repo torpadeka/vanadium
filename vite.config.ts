@@ -57,7 +57,7 @@ export default defineConfig({
                         "/models/chat/completions?api-version=2024-05-01-preview"
                     ),
                 headers: {
-                    Authorization: `Bearer 5z4ZNhmP1uWKwZRmQamd5txWgK7L3yvG86pVsyrP5fXjAehEH63OJQQJ99BDACHYHv6XJ3w3AAAAACOGxPz1`,
+                    Authorization: `Bearer ${process.env.VITE_AZURE_OPENAI_KEY}`,
                     "Content-Type": "application/json",
                 },
             },

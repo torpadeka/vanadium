@@ -69,10 +69,15 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
         // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+        // Set global alpha for overlay mode
+        if (showPreview) {
+            ctx.globalAlpha = 0.8;
+        }
+
         // Draw elements
         elements.forEach((element) => {
-            ctx.strokeStyle = element.color;
-            ctx.fillStyle = element.color + "20";
+            ctx.strokeStyle = showPreview ? element.color : element.color;
+            ctx.fillStyle = showPreview ? element.color + "40" : element.color + "20";
             ctx.lineWidth = selectedElement === element.id ? 3 : 2;
 
             if (element.type === "box") {

@@ -1363,7 +1363,16 @@ button:focus-visible {
                         currentChat={currentChat}
                         onSelectChat={setCurrentChat}
                         onClose={() => setSidebarOpen(false)}
-                        onNewProject={createNewProject}
+                        showPreview={true}
+                        previewContent={
+                            <iframe
+                                ref={previewRef}
+                                src={previewUrl}
+                                className="w-full h-full border-0"
+                                title="Preview"
+                                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+                            />
+                        }
                     />
                 )}
 

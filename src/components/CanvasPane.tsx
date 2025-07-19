@@ -92,7 +92,7 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
 
             // Draw text
             if (element.text) {
-                ctx.fillStyle = element.color;
+                ctx.fillStyle = showPreview ? element.color : element.color;
                 ctx.font = "14px Inter, sans-serif";
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
@@ -128,6 +128,11 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
                 drawSelectionHandles(ctx, element);
             }
         });
+        
+        // Reset global alpha
+        if (showPreview) {
+            ctx.globalAlpha = 1.0;
+        }
     };
 
     const drawSelectionHandles = (

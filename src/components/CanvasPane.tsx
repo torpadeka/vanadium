@@ -42,6 +42,8 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const previewRef = useRef<HTMLDivElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null); // Ref for the parent container
+    const toolbarRef = useRef<HTMLDivElement>(null); // Ref for the toolbar
     const [elements, setElements] = useState<CanvasElement[]>([]);
     const [selectedTool, setSelectedTool] = useState<Tool>("select");
     const [isDrawing, setIsDrawing] = useState(false);
@@ -54,10 +56,42 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
     const [editingText, setEditingText] = useState<string | null>(null);
     const [textInput, setTextInput] = useState("");
     const [canvasEnabled, setCanvasEnabled] = useState(true);
+    const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 }); // Dynamic size state
+    const [toolbarHeight, setToolbarHeight] = useState(0); // State to store toolbar height
+
+    useEffect(() => {
+        const container = containerRef.current;
+        const toolbar = toolbarRef.current;
+        if (!container || !toolbar) return;
+
+        const resizeObserver = new ResizeObserver((entries) => {
+            for (let entry of entries) {
+                const { width, height } = entry.contentRect;
+                setToolbarHeight(toolbar.offsetHeight); // Update toolbar height
+                const availableHeight = height - toolbarHeight; // Subtract toolbar height
+                setCanvasSize({
+                    width,
+                    height: Math.max(0, availableHeight), // Ensure height doesn't go negative
+                });
+            }
+        });
+
+        resizeObserver.observe(container);
+
+        // Initial size
+        setToolbarHeight(toolbar.offsetHeight);
+        const initialHeight = container.clientHeight - toolbarHeight;
+        setCanvasSize({
+            width: container.clientWidth,
+            height: Math.max(0, initialHeight),
+        });
+
+        return () => resizeObserver.unobserve(container);
+    }, []);
 
     useEffect(() => {
         redrawCanvas();
-    }, [elements, selectedElement]);
+    }, [elements, selectedElement, canvasSize]);
 
     const redrawCanvas = () => {
         const canvas = canvasRef.current;
@@ -65,6 +99,10 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
 
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
+
+        // Set canvas dimensions
+        canvas.width = canvasSize.width;
+        canvas.height = canvasSize.height;
 
         // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -100,7 +138,6 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
 
-                // Word wrap for text
                 const words = element.text.split(" ");
                 const maxWidth = element.width - 16;
                 const lineHeight = 18;
@@ -126,12 +163,11 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
                 ctx.fillText(line, element.x + element.width / 2, y);
             }
 
-            // Draw selection handles
             if (selectedElement === element.id && canvasEnabled) {
                 drawSelectionHandles(ctx, element);
             }
         });
-        
+
         ctx.globalAlpha = 1.0;
     };
 
@@ -222,7 +258,6 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
     };
 
     const findElementAt = (x: number, y: number): CanvasElement | null => {
-        // Check in reverse order (top to bottom)
         for (let i = elements.length - 1; i >= 0; i--) {
             const element = elements[i];
             if (
@@ -302,28 +337,6 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
         const canvas = canvasRef.current;
         if (!canvas) return;
 
-        // Update cursor based on hover state
-        if (selectedTool === "select" && selectedElement) {
-            const selectedEl = elements.find((el) => el.id === selectedElement);
-            if (selectedEl) {
-                const handle = findResizeHandle(x, y, selectedEl);
-                if (handle) {
-                    const handleInfo = getResizeHandles(selectedEl).find(
-                        (h) => h.position === handle
-                    );
-                    canvas.style.cursor = handleInfo?.cursor || "default";
-                } else if (findElementAt(x, y)) {
-                    canvas.style.cursor = "move";
-                } else {
-                    canvas.style.cursor = "default";
-                }
-            }
-        } else if (selectedTool === "select") {
-            canvas.style.cursor = findElementAt(x, y) ? "pointer" : "default";
-        } else {
-            canvas.style.cursor = "crosshair";
-        }
-
         if (isResizing && selectedElement && resizeHandle) {
             const selectedEl = elements.find((el) => el.id === selectedElement);
             if (selectedEl) {
@@ -372,7 +385,6 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
                         break;
                 }
 
-                // Minimum size constraints
                 if (newWidth < 20) {
                     newWidth = 20;
                     if (resizeHandle.includes("w"))
@@ -526,9 +538,12 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
     };
 
     return (
-        <div className="h-full bg-gray-950 flex flex-col">
+        <div
+            ref={containerRef} // Attach ref to the parent div
+            className="h-full bg-gray-950 flex flex-col"
+        >
             {/* Toolbar */}
-            <div className="border-b border-gray-800 p-4 flex items-center justify-between">
+            <div ref={toolbarRef} className="border-b border-gray-800 p-4 flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                     <button
                         onClick={() => setSelectedTool("select")}
@@ -602,15 +617,12 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
                 {showPreview && (
                     <div className="absolute inset-0 flex flex-col">
                         {/* Canvas Layer */}
-                        <div
-                            className="relative z-10 bg-gray-900"
-                            style={{ height: "400px" }}
-                        >
+                        <div className="relative z-100 bg-none">
                             <canvas
                                 ref={canvasRef}
-                                width={1200}
-                                height={400}
-                                className="absolute inset-0 cursor-crosshair"
+                                width={canvasSize.width}
+                                height={canvasSize.height}
+                                className="absolute inset-0 cursor-crosshair bg-none"
                                 onMouseDown={handleMouseDown}
                                 onMouseMove={handleMouseMove}
                                 onMouseUp={handleMouseUp}
@@ -619,14 +631,13 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
                         </div>
 
                         {/* Preview Layer */}
-                        <div className="flex-1 relative">
+                        <div className="flex-1 top-0 z-0">
                             <div
                                 ref={previewRef}
                                 className="absolute inset-0 bg-white"
                             >
                                 {previewContent}
                             </div>
-                            {/* Overlay to make preview unclickable */}
                             <div className="absolute inset-0 bg-transparent cursor-not-allowed z-10" />
                         </div>
                     </div>
@@ -635,8 +646,8 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
                 {!showPreview && (
                     <canvas
                         ref={canvasRef}
-                        width={1200}
-                        height={800}
+                        width={canvasSize.width}
+                        height={canvasSize.height}
                         className="absolute inset-0 cursor-crosshair bg-gray-900"
                         onMouseDown={handleMouseDown}
                         onMouseMove={handleMouseMove}
@@ -692,8 +703,7 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
                             <div
                                 key={element.id}
                                 onClick={() =>
-                                    canvasEnabled &&
-                                    setSelectedElement(element.id)
+                                    canvasEnabled && setSelectedElement(element.id)
                                 }
                                 className={`text-xs p-2 rounded cursor-pointer transition-colors flex items-center justify-between ${
                                     selectedElement === element.id

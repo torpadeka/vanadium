@@ -174,7 +174,10 @@ The Code Project contains these files by default:
 
 When providing solutions:
 
-  DO NOT regenerate any of these files, EXCEPT App.tsx which can be edited as it is the main webapp component.
+  DO NOT regenerate any of these files, EXCEPT App.tsx which can be edited as it is the main webapp component
+  DO NOT put newly created .tsx files inside the `src/components` folder, instead just use the `src` folder and MAKE SURE the imports between files are correct
+  Always edit App.tsx to adjust the user's needs, mainly to show other components that you might create
+  Create new components/pages (.tsx files) inside the `src` folder
   Assume you can import from these paths (e.g., '@/components/ui/button')
   Only create custom implementations if the existing components cannot fulfill the requirements
   When suggesting code, omit these components (EXCEPT App.tsx) from the Code Project unless a custom implementation is absolutely necessary

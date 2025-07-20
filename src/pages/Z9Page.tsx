@@ -34,7 +34,7 @@ import {
 } from "@/declarations/chat_system_service/chat_system_service.did";
 import { Link } from "react-router";
 
-interface FileNode {
+export interface FileNode {
     id: number;
     name: string;
     type: "file" | "folder";
@@ -42,7 +42,7 @@ interface FileNode {
     children?: FileNode[];
     parentId?: number;
     isOpen?: boolean;
-    path?: string; // Added path property
+    path?: string;
 }
 
 type TabType = "code" | "preview" | "canvas";
@@ -78,9 +78,8 @@ const Z9Page: React.FC = () => {
         { name: string; description: string }[]
     >([]);
 
-    // const [isInitialSetupComplete, setIsInitialSetupComplete] = useState(false);
+    const [fileTreeReady, setFileTreeReady] = useState(false);
 
-    // Initialize WebContainer
     useEffect(() => {
         const initWebContainer = async () => {
             try {
@@ -98,7 +97,6 @@ const Z9Page: React.FC = () => {
         initWebContainer();
 
         return () => {
-            // Only teardown if the instance is still active and not reused
             if (webContainerRef.current && !document.hidden) {
                 webContainerRef.current.teardown();
                 webContainerRef.current = null;
@@ -107,18 +105,19 @@ const Z9Page: React.FC = () => {
         };
     }, []);
 
-    // Load chats on component mount
     useEffect(() => {
         if (principal) {
             loadChats();
         }
     }, [principal]);
 
-    // Load messages when current chat changes
     useEffect(() => {
         if (currentChat) {
             loadMessages(parseInt(currentChat));
-            loadProjectFiles(parseInt(currentChat));
+            loadProjectFiles(parseInt(currentChat)).then(() => {
+                // Ensure fileTree is ready before allowing sendMessage to proceed
+                setFileTreeReady(true);
+            });
         }
     }, [currentChat]);
 
@@ -182,7 +181,7 @@ const Z9Page: React.FC = () => {
                         console.log("Mounting files to WebContainer...");
                         await mountFilesToWebContainer(files, folders);
                         console.log(
-                            "Rebuilt fileTree:",
+                            "Rebuilt fileTree after mount:",
                             tree.map((n) => ({
                                 id: n.id,
                                 name: n.name,
@@ -205,7 +204,6 @@ const Z9Page: React.FC = () => {
         const nodeMap = new Map<number, FileNode>();
         const rootNodes: FileNode[] = [];
 
-        // Create folder nodes with paths
         folders.forEach((folder) => {
             const node: FileNode = {
                 id: Number(folder.id),
@@ -221,7 +219,6 @@ const Z9Page: React.FC = () => {
             nodeMap.set(Number(folder.id), node);
         });
 
-        // Create file nodes with paths and infer parentId from path if missing
         files.forEach((file) => {
             const node: FileNode = {
                 id: Number(file.id),
@@ -234,7 +231,6 @@ const Z9Page: React.FC = () => {
                 path: getFilePath(file, folders),
             };
 
-            // Infer parentId from path if not set
             if (!node.parentId && node.path && node.path.includes("/")) {
                 const folderPath = node.path.substring(
                     0,
@@ -250,7 +246,6 @@ const Z9Page: React.FC = () => {
             nodeMap.set(Number(file.id), node);
         });
 
-        // Build tree structure
         nodeMap.forEach((node) => {
             if (node.parentId && nodeMap.has(node.parentId)) {
                 const parent = nodeMap.get(node.parentId)!;
@@ -260,7 +255,6 @@ const Z9Page: React.FC = () => {
             }
         });
 
-        // Sort and filter root nodes
         const sortNodes = (nodes: FileNode[]) => {
             nodes.sort((a, b) =>
                 a.type !== b.type
@@ -288,21 +282,18 @@ const Z9Page: React.FC = () => {
         try {
             console.log("Mounting files to WebContainer...");
 
-            // Create folders first
             for (const folder of folders) {
                 const folderPath = getFolderPath(folder, folders);
                 await webContainer.fs.mkdir(folderPath, { recursive: true });
                 console.log(`Created folder: ${folderPath}`);
             }
 
-            // Create files
             for (const file of files) {
                 const filePath = getFilePath(file, folders);
                 await webContainer.fs.writeFile(filePath, file.content);
                 console.log(`Created file: ${filePath}`);
             }
 
-            // Install dependencies and start dev server
             await installAndStartDev();
         } catch (error) {
             console.error("Failed to mount files to WebContainer:", error);
@@ -340,53 +331,13 @@ const Z9Page: React.FC = () => {
         return file.name;
     };
 
-    // const addShadcnComponents = async () => {
-    //     if (!webContainer || !webContainerRef.current) return;
-
-    //     const componentsToAdd = ["button", "input", "card", "alert", "dialog"];
-
-    //     try {
-    //         for (const component of componentsToAdd) {
-    //             console.log(`Adding shadcn component: ${component}`);
-    //             const process = await webContainer.spawn("npx", [
-    //                 "shadcn",
-    //                 "add",
-    //                 component,
-    //             ]);
-
-    //             process.output.pipeTo(
-    //                 new WritableStream({
-    //                     write(data) {
-    //                         console.log(
-    //                             `shadcn-ui output for ${component}:`,
-    //                             data
-    //                         );
-    //                     },
-    //                 })
-    //             );
-
-    //             const exitCode = await process.exit;
-    //             if (exitCode !== 0) {
-    //                 console.error(`Failed to add ${component}`);
-    //                 continue;
-    //             }
-    //             console.log(`Successfully added ${component}`);
-    //         }
-    //     } catch (error) {
-    //         console.error(
-    //             "Failed to run shadcn-ui components installation:",
-    //             error
-    //         );
-    //     }
-    // };
-
     const installAndStartDev = async () => {
         if (!webContainer) return;
 
         try {
             console.log("Installing dependencies...");
             const installProcess = await webContainer.spawn("npm", ["install"]);
-            await installProcess.exit; // Wait for install to complete
+            await installProcess.exit;
             console.log("Dependencies installed");
 
             console.log("Mounting files and starting dev server...");
@@ -414,7 +365,6 @@ const Z9Page: React.FC = () => {
         setIsLoading(true);
 
         try {
-            // Create new chat
             const chatResult =
                 await chatHandler.current.createChat("New Project");
             if ("err" in chatResult) {
@@ -424,7 +374,6 @@ const Z9Page: React.FC = () => {
             const newChat = chatResult.ok;
             const chatId = Number(newChat.id);
 
-            // Create project version
             const versionResult =
                 await chatHandler.current.createProjectVersion(
                     chatId,
@@ -438,7 +387,6 @@ const Z9Page: React.FC = () => {
             const version = versionResult.ok;
             const versionId = Number(version.id);
 
-            // Create default Vite React project structure
             const srcFolderResult = await chatHandler.current.createFolder(
                 versionId,
                 "src"
@@ -448,7 +396,6 @@ const Z9Page: React.FC = () => {
             }
             const srcFolderId = Number(srcFolderResult.ok.id);
 
-            // Create assets folder
             const assetsFolderResult = await chatHandler.current.createFolder(
                 versionId,
                 "assets",
@@ -459,7 +406,6 @@ const Z9Page: React.FC = () => {
             }
             const assetsFolderId = Number(assetsFolderResult.ok.id);
 
-            // Create public folder
             const publicFolderResult = await chatHandler.current.createFolder(
                 versionId,
                 "public"
@@ -469,7 +415,6 @@ const Z9Page: React.FC = () => {
             }
             const publicFolderId = Number(publicFolderResult.ok.id);
 
-            // Create src/components/ui folder
             const componentsFolderResult =
                 await chatHandler.current.createFolder(
                     versionId,
@@ -491,7 +436,6 @@ const Z9Page: React.FC = () => {
             }
             const uiFolderId = Number(uiFolderResult.ok.id);
 
-            // Create src/lib folder
             const libFolderResult = await chatHandler.current.createFolder(
                 versionId,
                 "lib",
@@ -502,7 +446,6 @@ const Z9Page: React.FC = () => {
             }
             const libFolderId = Number(libFolderResult.ok.id);
 
-            // Create src/hooks folder
             const hooksFolderResult = await chatHandler.current.createFolder(
                 versionId,
                 "hooks",
@@ -513,7 +456,6 @@ const Z9Page: React.FC = () => {
             }
             const hooksFolderId = Number(hooksFolderResult.ok.id);
 
-            // Default Vite React files
             const defaultFiles = [
                 // Root files
                 {
@@ -6532,7 +6474,6 @@ export function useIsMobile() {
                 },
             ];
 
-            // Create files in backend
             for (const file of defaultFiles) {
                 const fileResult = await chatHandler.current.createFile(
                     versionId,
@@ -6550,7 +6491,6 @@ export function useIsMobile() {
                         `Successfully created file: ${file.name}`,
                         fileResult.ok
                     );
-                    // Verify folderId in the response
                     if (
                         file.folderId &&
                         fileResult.ok.folderId?.[0] !== file.folderId
@@ -6562,7 +6502,6 @@ export function useIsMobile() {
                 }
             }
 
-            // Update chats list and select new chat
             await loadChats();
             setCurrentChat(chatId.toString());
         } catch (error) {
@@ -6591,7 +6530,7 @@ export function useIsMobile() {
     const selectFile = (node: FileNode) => {
         if (node.type === "file") {
             setSelectedFile(node);
-            setActiveTab("code"); // Switch to code tab when file is selected
+            setActiveTab("code");
         }
     };
 
@@ -6599,7 +6538,6 @@ export function useIsMobile() {
         if (!selectedFile || !currentProjectVersion) return;
 
         try {
-            // Update in backend
             const result = await chatHandler.current.updateFile(
                 selectedFile.id,
                 undefined,
@@ -6608,10 +6546,8 @@ export function useIsMobile() {
             );
 
             if ("ok" in result) {
-                // Update local state
                 setSelectedFile({ ...selectedFile, content });
 
-                // Update file tree
                 const updateTree = (nodes: FileNode[]): FileNode[] => {
                     return nodes.map((node) => {
                         if (node.id === selectedFile.id) {
@@ -6628,7 +6564,6 @@ export function useIsMobile() {
                 };
                 setFileTree(updateTree(fileTree));
 
-                // Update in WebContainer
                 if (webContainer) {
                     const filePath = getFilePathFromTree(
                         selectedFile.id,
@@ -6725,7 +6660,7 @@ export function useIsMobile() {
     ): number | undefined => {
         const parts = path
             .split("/")
-            .filter((part) => part && part !== path.split("/").pop()); // Exclude file name
+            .filter((part) => part && part !== path.split("/").pop());
         let currentFolderId: number | undefined;
 
         console.log("Resolving path:", path, "with folder parts:", parts);
@@ -6776,23 +6711,39 @@ export function useIsMobile() {
         path: string,
         nodes: FileNode[]
     ): FileNode | undefined => {
-        const baseName = path
-            .split("/")
-            .pop()!
-            .replace(/\.jsx$|\.tsx$/, ""); // Remove extension
-        for (const node of nodes) {
-            const nodeBaseName = node.name.replace(/\.jsx$|\.tsx$/, "");
-            if (nodeBaseName === baseName) return node;
-            if (node.children) {
-                const found = findFileNodeByPath(path, node.children);
-                if (found) return found;
+        const parts = path.split("/").filter((part) => part); // Split into path segments
+        const fileName = parts.pop()!.replace(/\.tsx$/, ""); // Remove .tsx from the last segment
+        const folderPath = parts.join("/"); // Reconstruct folder path
+
+        const search = (
+            nodes: FileNode[],
+            currentPath: string = ""
+        ): FileNode | undefined => {
+            for (const node of nodes) {
+                const nodeFullPath = currentPath
+                    ? `${currentPath}/${node.name}`
+                    : node.name;
+                const nodeBaseName = node.name.replace(/\.tsx$/, "");
+
+                if (
+                    node.type === "file" &&
+                    nodeBaseName === fileName &&
+                    nodeFullPath === path
+                ) {
+                    return node;
+                }
+                if (node.type === "folder" && node.children) {
+                    const found = search(node.children, nodeFullPath);
+                    if (found) return found;
+                }
             }
-        }
-        return undefined;
+            return undefined;
+        };
+
+        return search(nodes);
     };
 
     const applyQuickEdit = (content: string, instructions: string): string => {
-        // Simple parser for quick edit instructions (can be enhanced based on actual instruction format)
         let updatedContent = content;
         const lines = instructions.split("\n");
         for (const line of lines) {
@@ -6837,7 +6788,7 @@ export function useIsMobile() {
             type: "file",
             content,
             parentId: getFolderIdFromPath(path, fileTree),
-            path, // Set path for new file
+            path,
         };
         setFileTree((prev) => {
             const updateTree = (nodes: FileNode[]): FileNode[] => {
@@ -6875,14 +6826,13 @@ export function useIsMobile() {
             if (fileNode) {
                 fileNode.name = newPath.split("/").pop()!;
                 fileNode.parentId = getFolderIdFromPath(newPath, newTree);
-                fileNode.path = newPath; // Update path
+                fileNode.path = newPath;
             }
             return newTree;
         });
     };
 
     const updateImportsAfterMove = async (oldPath: string, newPath: string) => {
-        // Update imports in all files (simplified logic)
         const oldFileName = oldPath.split("/").pop()!;
         const newFileName = newPath.split("/").pop()!;
         fileTree.forEach(async (node) => {
@@ -6921,7 +6871,8 @@ export function useIsMobile() {
 
             const aiResponse = await aiService.sendMessage(
                 input,
-                canvasData ? generateCanvasDescription() : undefined
+                canvasData ? generateCanvasDescription() : undefined,
+                fileTree
             );
 
             if (aiResponse.thinking) {
@@ -6979,12 +6930,12 @@ export function useIsMobile() {
                             (parentNode.children =
                                 parentNode.children || []).push(updatedNode);
                         } else if (!node.parentId) {
-                            newTree.push(updatedNode); // Keep at root if no parent
+                            newTree.push(updatedNode);
                         }
                         return nodes;
                     }
                     if (nodes[i].children) {
-                        nodes[i].children = updateNode(nodes[i].children ?? []); // Handle undefined case
+                        nodes[i].children = updateNode(nodes[i].children ?? []);
                     }
                 }
                 return nodes;
@@ -6994,27 +6945,91 @@ export function useIsMobile() {
         });
     };
 
+    const getFolderPathFromId = (folderId: number): string => {
+        const node = fileTree.find(
+            (n) => n.id === folderId && n.type === "folder"
+        );
+        if (!node) return "";
+        return node.path || node.name;
+    };
+
+    const ensureFolder = async (
+        versionId: number,
+        parentId: number | undefined,
+        folderName: string
+    ): Promise<number> => {
+        const existingFolder = fileTree.find(
+            (n) =>
+                n.type === "folder" &&
+                n.name === folderName &&
+                n.parentId === parentId
+        );
+        if (existingFolder) return existingFolder.id;
+
+        const folderResult = await chatHandler.current.createFolder(
+            versionId,
+            folderName,
+            parentId
+        );
+        if ("ok" in folderResult) {
+            const newFolderId = Number(folderResult.ok.id);
+            const newFolderNode: FileNode = {
+                id: newFolderId,
+                name: folderName,
+                type: "folder",
+                children: [],
+                isOpen: false,
+                path: parentId
+                    ? `${getFolderPathFromId(parentId)}/${folderName}`
+                    : folderName,
+                parentId,
+            };
+            setFileTree((prev) => {
+                const updateTree = (nodes: FileNode[]): FileNode[] => {
+                    return nodes.map((node) => {
+                        if (node.id === parentId && node.type === "folder") {
+                            return {
+                                ...node,
+                                children: [
+                                    ...(node.children || []),
+                                    newFolderNode,
+                                ],
+                            };
+                        }
+                        if (node.children) {
+                            return {
+                                ...node,
+                                children: updateTree(node.children),
+                            };
+                        }
+                        return node;
+                    });
+                };
+                return updateTree([...prev]);
+            });
+            return newFolderId;
+        }
+        throw new Error("Failed to create folder");
+    };
+
     const handleCodeProject = async (
         project: AIResponse["codeProject"],
         chatId: number
     ) => {
-        if (!webContainer || !currentProjectVersion) return;
+        if (!webContainer || !currentProjectVersion || !fileTreeReady) return;
 
         const versionId = Number(currentProjectVersion.id);
+        const updatedFiles = new Set<string>();
 
         if (project && project.files) {
             for (const file of project.files) {
                 const fullPath = file.path;
-                const folderId =
-                    getFolderIdFromPath(fullPath, fileTree) ||
-                    (fullPath.startsWith("src/")
-                        ? fileTree.find(
-                              (n) =>
-                                  n.type === "folder" &&
-                                  n.name === "src" &&
-                                  !n.parentId
-                          )?.id
-                        : undefined);
+                const folderId = await getFolderIdFromPath(
+                    fullPath,
+                    fileTree
+                );
+                const fileName = fullPath.split("/").pop()!;
+
                 const existingFile = findFileNodeByPath(fullPath, fileTree);
 
                 if (existingFile) {
@@ -7023,7 +7038,7 @@ export function useIsMobile() {
                         folderId,
                         undefined,
                         file.content
-                    ); // Update folderId
+                    );
                     await updateFileContent(file.content);
                     if (webContainer)
                         await webContainer.fs.writeFile(fullPath, file.content);
@@ -7034,42 +7049,38 @@ export function useIsMobile() {
                         parentId: folderId,
                     };
                     await updateFileTreeWithExistingFile(updatedNode);
-                } else {
-                    const fileName = fullPath.split("/").pop()!;
-                    if (fullPath.startsWith("src/") && !folderId) {
-                        const srcNode = fileTree.find(
-                            (n) =>
-                                n.type === "folder" &&
-                                n.name === "src" &&
-                                !n.parentId
+                } else if (folderId) {
+                    const fileResult = await chatHandler.current.createFile(
+                        versionId,
+                        folderId,
+                        fileName,
+                        file.content
+                    );
+                    if ("ok" in fileResult) {
+                        const newFileId = Number(fileResult.ok.id);
+                        await updateFileTreeWithNewFile(
+                            newFileId,
+                            fullPath,
+                            file.content
                         );
-                        if (srcNode) {
-                            const newPath = `src/${fileName}`;
-                            const fileResult =
-                                await chatHandler.current.createFile(
-                                    versionId,
-                                    srcNode.id,
-                                    fileName,
-                                    file.content
-                                );
-                            if ("ok" in fileResult) {
-                                const newFileId = Number(fileResult.ok.id);
-                                await updateFileTreeWithNewFile(
-                                    newFileId,
-                                    newPath,
-                                    file.content
-                                );
-                                if (webContainer)
-                                    await webContainer.fs.writeFile(
-                                        newPath,
-                                        file.content
-                                    );
-                            }
-                        }
-                    } else if (folderId) {
+                        if (webContainer)
+                            await webContainer.fs.writeFile(
+                                fullPath,
+                                file.content
+                            );
+                    }
+                } else {
+                    console.warn(
+                        `Fallback to root for ${fullPath}, creating necessary folders`
+                    );
+                    const baseFolderId = await getFolderIdFromPath(
+                        "src",
+                        fileTree
+                    );
+                    if (baseFolderId) {
                         const fileResult = await chatHandler.current.createFile(
                             versionId,
-                            folderId,
+                            baseFolderId,
                             fileName,
                             file.content
                         );
@@ -7077,44 +7088,36 @@ export function useIsMobile() {
                             const newFileId = Number(fileResult.ok.id);
                             await updateFileTreeWithNewFile(
                                 newFileId,
-                                fullPath,
+                                `src/${fileName}`,
                                 file.content
                             );
                             if (webContainer)
                                 await webContainer.fs.writeFile(
-                                    fullPath,
+                                    `src/${fileName}`,
                                     file.content
                                 );
                         }
-                    } else {
-                        await chatHandler.current.createFile(
-                            versionId,
-                            undefined,
-                            fileName,
-                            file.content
-                        );
-                        await updateFileTreeWithNewFile(
-                            -1,
-                            fileName,
-                            file.content
-                        );
-                        if (webContainer)
-                            await webContainer.fs.writeFile(
-                                fileName,
-                                file.content
-                            );
                     }
                 }
+                updatedFiles.add(fullPath);
             }
+
+            fileTree.forEach((node) => {
+                if (
+                    node.type === "file" &&
+                    !updatedFiles.has(node.path || "")
+                ) {
+                    console.log(`Preserving existing file: ${node.path}`);
+                }
+            });
         }
 
-        await loadProjectFiles(chatId); // Reload to sync with backend
+        await loadProjectFiles(chatId);
     };
 
     const generateCanvasDescription = (): string => {
         if (fileTree.length === 0) return "Empty canvas";
 
-        // This is a placeholder - in a real implementation, you'd analyze the canvas elements
         return "Canvas with user-drawn elements for UI mockup";
     };
 
@@ -7122,7 +7125,6 @@ export function useIsMobile() {
         return new Date(Number(timestamp) / 1000000).toLocaleString();
     };
 
-    // Chat Selection Screen
     if (!principal) {
         return (
             <div className="h-screen bg-black text-white flex items-center justify-center">
@@ -7149,7 +7151,6 @@ export function useIsMobile() {
     if (!currentChat) {
         return (
             <div className="h-screen bg-black text-white flex">
-                {/* Chat Sidebar */}
                 {sidebarOpen && (
                     <ChatSidebar
                         chats={chats}
@@ -7160,9 +7161,7 @@ export function useIsMobile() {
                     />
                 )}
 
-                {/* Main Content */}
-                <div className="flex-1 flex flex-col host-grotesk-300">
-                    {/* Header */}
+                <div className="flex-1 flex flex-col">
                     <header className="border-b border-gray-800 p-4 flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                             <Button
@@ -7192,8 +7191,7 @@ export function useIsMobile() {
                         </div>
                     </header>
 
-                    {/* Chat Selection Content */}
-                    <div className="flex-1 flex items-center justify-center host-grotesk-300">
+                    <div className="flex-1 flex items-center justify-center">
                         <div className="text-center max-w-2xl px-6">
                             <MessageSquare className="w-20 h-20 mx-auto mb-8 text-gray-600" />
                             <h2 className="text-3xl font-bold mb-4">
@@ -7261,8 +7259,7 @@ export function useIsMobile() {
     }
 
     return (
-        <div className="h-screen bg-black text-white flex host-grotesk-300">
-            {/* Chat Sidebar */}
+        <div className="h-screen bg-black text-white flex">
             {sidebarOpen && (
                 <ChatSidebar
                     chats={chats}
@@ -7273,9 +7270,7 @@ export function useIsMobile() {
                 />
             )}
 
-            {/* Chat Panel - Left Side */}
-            <div className="w-80 border-r border-gray-800 bg-gray-950 flex flex-col ">
-                {/* Chat Header */}
+            <div className="w-80 border-r border-gray-800 bg-gray-950 flex flex-col">
                 <div className="border-b border-gray-800 p-4 flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                         <Button
@@ -7303,7 +7298,6 @@ export function useIsMobile() {
                     </Button>
                 </div>
 
-                {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {messages.length === 0 ? (
                         <div className="text-center text-gray-500 py-8">
@@ -7346,7 +7340,6 @@ export function useIsMobile() {
                     )}
                 </div>
 
-                {/* Chat Input */}
                 <div className="border-t border-gray-800 p-4">
                     {activeTab === "canvas" && (
                         <div className="mb-3 flex items-center space-x-2">
@@ -7422,9 +7415,7 @@ export function useIsMobile() {
                 </div>
             </div>
 
-            {/* Main Content */}
             <div className="flex-1 flex flex-col">
-                {/* Header */}
                 <header className="border-b border-gray-800 p-4 flex items-center justify-between">
                     <h1 className="text-xl font-semibold">
                         Project {currentChat}
@@ -7436,9 +7427,7 @@ export function useIsMobile() {
                     </div>
                 </header>
 
-                {/* Main Layout */}
                 <div className="flex-1 flex">
-                    {/* File Explorer */}
                     <div className="w-64 border-r border-gray-800 bg-gray-950">
                         <div className="p-3 border-b border-gray-800">
                             <h3 className="text-sm font-medium text-gray-300">
@@ -7456,9 +7445,7 @@ export function useIsMobile() {
                         </div>
                     </div>
 
-                    {/* Editor and Preview */}
                     <div className="flex-1 flex flex-col">
-                        {/* Tab Navigation */}
                         <div className="border-b border-gray-800 bg-gray-900">
                             <div className="flex">
                                 <button
@@ -7497,7 +7484,6 @@ export function useIsMobile() {
                             </div>
                         </div>
 
-                        {/* Tab Content */}
                         <div className="flex-1 flex">
                             {activeTab === "code" && (
                                 <div className="flex-1 flex flex-col">
@@ -7546,7 +7532,6 @@ export function useIsMobile() {
 
                             {activeTab === "canvas" && (
                                 <div className="flex-1 relative">
-                                    {/* Canvas directly on top of preview */}
                                     <CanvasPane
                                         onCanvasCapture={(
                                             dataUrl,

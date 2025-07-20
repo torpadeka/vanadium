@@ -72,13 +72,15 @@ const Z9Page: React.FC = () => {
     const chatHandler = useRef(new ChatSystemHandler());
     const webContainerRef = useRef<WebContainer | null>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
-
-    const [thinking, setThinking] = useState<string>("");
     const [suggestedActions, setSuggestedActions] = useState<
         { name: string; description: string }[]
     >([]);
 
     const [fileTreeReady, setFileTreeReady] = useState(false);
+
+    const [thinking, setThinking] = useState<string>("");
+    const [chatContent, setChatContent] = useState<string>(""); // For untagged text
+    const [isStreaming, setIsStreaming] = useState(false);
 
     useEffect(() => {
         const initWebContainer = async () => {
@@ -133,6 +135,10 @@ const Z9Page: React.FC = () => {
                     name: chat.title?.[0] || `Project ${chat.id}`,
                     timestamp: new Date(Number(chat.createdAt) / 1000000),
                 }));
+                // Sort chats by timestamp in descending order (newest first)
+                formattedChats.sort(
+                    (a, b) => b.timestamp.getTime() - a.timestamp.getTime()
+                );
                 setChats(formattedChats);
             }
         } catch (error) {
@@ -145,7 +151,11 @@ const Z9Page: React.FC = () => {
             const result =
                 await chatHandler.current.getAllMessageByChatId(chatId);
             if ("ok" in result) {
-                setMessages(result.ok);
+                // Sort messages by createdAt in ascending order (oldest first)
+                const sortedMessages = result.ok.sort(
+                    (a, b) => Number(a.createdAt) - Number(b.createdAt)
+                );
+                setMessages(sortedMessages);
             }
         } catch (error) {
             console.error("Failed to load messages:", error);
@@ -7389,11 +7399,11 @@ export function useIsMobile() {
                             )}
                         </Button>
                     </div>
-                    {thinking && (
+                    {/* {thinking && (
                         <div className="mt-2 text-sm text-gray-400 italic">
                             {thinking}
                         </div>
-                    )}
+                    )} */}
                     {suggestedActions.length > 0 && (
                         <div className="mt-2 text-sm text-gray-300">
                             <strong>Suggested Actions:</strong>

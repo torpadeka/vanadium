@@ -102,7 +102,7 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
 
         // Set canvas dimensions
         canvas.width = canvasSize.width;
-        canvas.height = canvasSize.height - 70;
+        canvas.height = canvasSize.height;
 
         // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -511,7 +511,7 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
 
     const clearCanvas = () => {
         setElements([]);
-        setSelectedElement(null);
+        setSelectedElement(null); 
     };
 
     const captureCanvas = () => {

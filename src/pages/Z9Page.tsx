@@ -78,9 +78,7 @@ const Z9Page: React.FC = () => {
 
     const [fileTreeReady, setFileTreeReady] = useState(false);
 
-    const [thinking, setThinking] = useState<string>("");
-    const [chatContent, setChatContent] = useState<string>(""); // For untagged text
-    const [isStreaming, setIsStreaming] = useState(false);
+    const [thinking, setThinking] = useState<boolean>(false);
 
     useEffect(() => {
         const initWebContainer = async () => {
@@ -197,8 +195,14 @@ const Z9Page: React.FC = () => {
                                 name: n.name,
                                 path: n.path,
                                 parentId: n.parentId,
+                                children: n.children
+                                    ? n.children.map((c) => ({
+                                          id: c.id,
+                                          name: c.name,
+                                      }))
+                                    : undefined,
                             }))
-                        );
+                        ); // Enhanced log with children
                     }
                 }
             }
@@ -214,6 +218,7 @@ const Z9Page: React.FC = () => {
         const nodeMap = new Map<number, FileNode>();
         const rootNodes: FileNode[] = [];
 
+        // Create folder nodes
         folders.forEach((folder) => {
             const node: FileNode = {
                 id: Number(folder.id),
@@ -229,6 +234,7 @@ const Z9Page: React.FC = () => {
             nodeMap.set(Number(folder.id), node);
         });
 
+        // Create file nodes
         files.forEach((file) => {
             const node: FileNode = {
                 id: Number(file.id),
@@ -240,22 +246,10 @@ const Z9Page: React.FC = () => {
                     : undefined,
                 path: getFilePath(file, folders),
             };
-
-            if (!node.parentId && node.path && node.path.includes("/")) {
-                const folderPath = node.path.substring(
-                    0,
-                    node.path.lastIndexOf("/")
-                );
-                const folder = folders.find(
-                    (f) => getFolderPath(f, folders) === folderPath
-                );
-                if (folder) {
-                    node.parentId = Number(folder.id);
-                }
-            }
             nodeMap.set(Number(file.id), node);
         });
 
+        // Link nodes to their parents
         nodeMap.forEach((node) => {
             if (node.parentId && nodeMap.has(node.parentId)) {
                 const parent = nodeMap.get(node.parentId)!;
@@ -265,6 +259,7 @@ const Z9Page: React.FC = () => {
             }
         });
 
+        // Sort and filter root nodes
         const sortNodes = (nodes: FileNode[]) => {
             nodes.sort((a, b) =>
                 a.type !== b.type
@@ -280,6 +275,7 @@ const Z9Page: React.FC = () => {
         const finalRootNodes = rootNodes.filter(
             (node) => node.type === "folder" || !node.parentId
         );
+        console.log("Built fileTree with hierarchy:", finalRootNodes); // Debug log with children
         return finalRootNodes;
     };
 
@@ -292,19 +288,25 @@ const Z9Page: React.FC = () => {
         try {
             console.log("Mounting files to WebContainer...");
 
+            // Create folder structure
             for (const folder of folders) {
                 const folderPath = getFolderPath(folder, folders);
                 await webContainer.fs.mkdir(folderPath, { recursive: true });
                 console.log(`Created folder: ${folderPath}`);
             }
 
+            // Write files
             for (const file of files) {
                 const filePath = getFilePath(file, folders);
-                await webContainer.fs.writeFile(filePath, file.content);
+                await webContainer.fs.writeFile(filePath, file.content || "");
                 console.log(`Created file: ${filePath}`);
             }
 
             await installAndStartDev();
+
+            // Rebuild fileTree after mounting to reflect structure
+            const updatedTree = buildFileTree(files, folders);
+            setFileTree(updatedTree);
         } catch (error) {
             console.error("Failed to mount files to WebContainer:", error);
         }
@@ -6858,68 +6860,6 @@ export function useIsMobile() {
         });
     };
 
-    const sendMessage = async () => {
-        if (!input.trim() || !currentChat) return;
-
-        try {
-            setIsLoading(true);
-            const chatId = parseInt(currentChat);
-
-            let canvasData = null;
-            if (includeCanvas && activeTab === "canvas") {
-                canvasData = captureCanvasScreenshot();
-            }
-
-            await chatHandler.current.createMessage(
-                chatId,
-                { user: null },
-                input,
-                currentProjectVersion
-                    ? Number(currentProjectVersion.id)
-                    : undefined
-            );
-
-            const aiResponse = await aiService.sendMessage(
-                input,
-                canvasData ? generateCanvasDescription() : undefined,
-                fileTree
-            );
-
-            if (aiResponse.thinking) {
-                setThinking(aiResponse.thinking);
-            }
-            if (aiResponse.actions) {
-                setSuggestedActions(aiResponse.actions);
-            }
-
-            if (aiResponse.codeProject) {
-                console.log("aiResponse.codeProject:", aiResponse.codeProject);
-                await handleCodeProject(aiResponse.codeProject, chatId);
-            }
-
-            await chatHandler.current
-                .createMessage(
-                    chatId,
-                    { ai: null },
-                    aiResponse.content ||
-                        `Error: ${aiResponse.error || "Failed to get AI response"}`,
-                    currentProjectVersion
-                        ? Number(currentProjectVersion.id)
-                        : undefined
-                )
-                .catch((error) =>
-                    console.error("Failed to save AI response:", error)
-                );
-
-            await loadMessages(chatId);
-            setInput("");
-        } catch (error) {
-            console.error("Failed to send message:", error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
     const updateFileTreeWithExistingFile = async (node: FileNode) => {
         setFileTree((prev) => {
             const newTree = [...prev];
@@ -7022,6 +6962,141 @@ export function useIsMobile() {
         throw new Error("Failed to create folder");
     };
 
+    const sendMessage = async () => {
+        if (!input.trim() || !currentChat) return;
+
+        try {
+            setIsLoading(true);
+            const chatId = parseInt(currentChat);
+
+            let canvasData = null;
+            if (includeCanvas && activeTab === "canvas") {
+                canvasData = captureCanvasScreenshot();
+            }
+
+            await chatHandler.current.createMessage(
+                chatId,
+                { user: null },
+                input,
+                currentProjectVersion
+                    ? Number(currentProjectVersion.id)
+                    : undefined
+            );
+
+            await loadMessages(chatId);
+            setInput("");
+
+            setThinking(true); // Set thinking state for UI feedback
+
+            const aiResponse = await aiService.sendMessage(
+                input,
+                canvasData ? generateCanvasDescription() : undefined,
+                fileTree
+            );
+
+            console.log("AI Response:", aiResponse);
+
+            // Handle thinking content only for UI display, not for saving
+            if (aiResponse.thinking) {
+                setThinking(true); // Keep thinking indicator active during processing
+            }
+
+            if (aiResponse.actions) {
+                setSuggestedActions(aiResponse.actions);
+            }
+
+            if (aiResponse.codeProject) {
+                // Adjust file paths to ensure they start with src/
+                const adjustedCodeProject = {
+                    ...aiResponse.codeProject,
+                    files: aiResponse.codeProject.files.map((file) => {
+                        let fullPath = file.path;
+                        if (
+                            !fullPath.startsWith("src/") &&
+                            !fullPath.startsWith("/src/")
+                        ) {
+                            fullPath = `src/${fullPath}`;
+                        }
+                        return { ...file, path: fullPath };
+                    }),
+                };
+                console.log(
+                    "Adjusted aiResponse.codeProject:",
+                    adjustedCodeProject
+                );
+                await handleCodeProject(adjustedCodeProject, chatId);
+            }
+
+            // Extract untagged text between <CodeProject> and <Actions>, ignoring <Thinking>
+            let untaggedText = aiResponse.content || "";
+            const codeProjectMatch = untaggedText.match(
+                /<CodeProject id="([^"]+)">([\s\S]*?)<\/CodeProject>/
+            );
+            if (codeProjectMatch) {
+                untaggedText = untaggedText
+                    .substring(untaggedText.indexOf("</CodeProject>") + 12)
+                    .trim(); // Start after </CodeProject>
+            }
+            const actionsMatch = untaggedText.match(
+                /<Actions>([\s\S]*?)<\/Actions>/
+            );
+            if (actionsMatch) {
+                untaggedText = untaggedText
+                    .substring(0, untaggedText.indexOf("<Actions>"))
+                    .trim();
+            }
+            // Trim any leading or trailing artifacts
+            untaggedText = untaggedText.trim();
+
+            // Split the string into an array of lines
+            const lines: string[] = untaggedText.split("\n");
+
+            // Remove the first two lines
+            const remainingLines: string[] = lines.slice(2);
+
+            // Join the remaining lines back into a string
+            const resultString: string = remainingLines.join("\n");
+
+            // Save only the extracted and cleaned untagged text as the final message
+            if (untaggedText) {
+                await chatHandler.current
+                    .createMessage(
+                        chatId,
+                        { ai: null },
+                        resultString,
+                        currentProjectVersion
+                            ? Number(currentProjectVersion.id)
+                            : undefined
+                    )
+                    .catch((error) =>
+                        console.error("Failed to save AI response:", error)
+                    );
+            } else if (!aiResponse.codeProject && !aiResponse.actions) {
+                // Save a default message if no meaningful content is found
+                await chatHandler.current
+                    .createMessage(
+                        chatId,
+                        { ai: null },
+                        "No additional response content.",
+                        currentProjectVersion
+                            ? Number(currentProjectVersion.id)
+                            : undefined
+                    )
+                    .catch((error) =>
+                        console.error("Failed to save default response:", error)
+                    );
+            }
+
+            await loadMessages(chatId);
+            setThinking(false); // Clear thinking indicator after processing
+            setInput("");
+        } catch (error) {
+            console.error("Failed to send message:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleCodeProject = async (
         project: AIResponse["codeProject"],
         chatId: number
@@ -7033,15 +7108,15 @@ export function useIsMobile() {
 
         if (project && project.files) {
             for (const file of project.files) {
-                const fullPath = file.path;
-                const folderId = await getFolderIdFromPath(
-                    fullPath,
-                    fileTree
-                );
+                let fullPath = file.path;
+                if (!fullPath.includes("/") && !fullPath.startsWith("src/")) {
+                    fullPath = `src/${fullPath}`;
+                }
+                const folderId = await getFolderIdFromPath(fullPath, fileTree);
+                console.log(`Resolved ${fullPath} to folderId: ${folderId}`);
                 const fileName = fullPath.split("/").pop()!;
 
                 const existingFile = findFileNodeByPath(fullPath, fileTree);
-
                 if (existingFile) {
                     await chatHandler.current.updateFile(
                         existingFile.id,
@@ -7058,8 +7133,11 @@ export function useIsMobile() {
                         path: fullPath,
                         parentId: folderId,
                     };
+                    console.log(
+                        `Updated node for ${fullPath} with parentId: ${folderId}`
+                    );
                     await updateFileTreeWithExistingFile(updatedNode);
-                } else if (folderId) {
+                } else if (folderId !== undefined) {
                     const fileResult = await chatHandler.current.createFile(
                         versionId,
                         folderId,
@@ -7067,6 +7145,9 @@ export function useIsMobile() {
                         file.content
                     );
                     if ("ok" in fileResult) {
+                        console.log(
+                            `Created file ${fileName} with id ${fileResult.ok.id} under folderId ${folderId}`
+                        );
                         const newFileId = Number(fileResult.ok.id);
                         await updateFileTreeWithNewFile(
                             newFileId,
@@ -7081,7 +7162,7 @@ export function useIsMobile() {
                     }
                 } else {
                     console.warn(
-                        `Fallback to root for ${fullPath}, creating necessary folders`
+                        `No valid folder for ${fullPath}, creating in src/ as fallback`
                     );
                     const baseFolderId = await getFolderIdFromPath(
                         "src",
@@ -7095,6 +7176,9 @@ export function useIsMobile() {
                             file.content
                         );
                         if ("ok" in fileResult) {
+                            console.log(
+                                `Fallback created file ${fileName} with id ${fileResult.ok.id} under folderId ${baseFolderId}`
+                            );
                             const newFileId = Number(fileResult.ok.id);
                             await updateFileTreeWithNewFile(
                                 newFileId,
@@ -7112,17 +7196,20 @@ export function useIsMobile() {
                 updatedFiles.add(fullPath);
             }
 
-            fileTree.forEach((node) => {
-                if (
-                    node.type === "file" &&
-                    !updatedFiles.has(node.path || "")
-                ) {
-                    console.log(`Preserving existing file: ${node.path}`);
+            project.files.forEach((file) => {
+                const fullPath = file.path.includes("/")
+                    ? file.path
+                    : `src/${file.path}`;
+                const existingNode = findFileNodeByPath(fullPath, fileTree);
+                if (existingNode && existingNode.content !== file.content) {
+                    console.warn(
+                        `Content mismatch for ${fullPath}. Expected: ${file.content.substring(0, 50)}..., Found: ${existingNode.content?.substring(0, 50)}...`
+                    );
                 }
             });
         }
 
-        await loadProjectFiles(chatId);
+        await loadProjectFiles(chatId); // Force reload if supported
     };
 
     const generateCanvasDescription = (): string => {
@@ -7135,7 +7222,7 @@ export function useIsMobile() {
         return new Date(Number(timestamp) / 1000000).toLocaleString();
     };
 
-    if (!principal) {
+    if (!user) {
         return (
             <div className="h-screen bg-black text-white flex items-center justify-center">
                 <div className="text-center max-w-md">
@@ -7148,17 +7235,15 @@ export function useIsMobile() {
                         with vanadium.
                     </p>
                     <Button asChild size="lg">
-                        <Link to="/login">
+                        <Link to="/">
                             <LogIn className="w-4 h-4 mr-2" />
-                            Go to Login
+                            Go to Home Page
                         </Link>
                     </Button>
                 </div>
             </div>
         );
-    }
-
-    if (!currentChat) {
+    } else if (!currentChat) {
         return (
             <div className="h-screen bg-black text-white flex">
                 {sidebarOpen && (
@@ -7347,6 +7432,25 @@ export function useIsMobile() {
                                 </div>
                             </div>
                         ))
+                    )}
+                    {thinking && (
+                        <div className="space-y-2">
+                            <div
+                                className={`flex "justify-start"
+                                    }`}
+                            >
+                                <div
+                                    className={`max-w-[80%] rounded-lg p-3 text-sm "bg-gray-800 text-gray-100"
+                                        }`}
+                                >
+                                    <div className="whitespace-pre-wrap">
+                                        <div className="lexend-200">
+                                            z9 is thinking . . .
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     )}
                 </div>
 

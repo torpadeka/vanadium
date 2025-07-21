@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
+import html2canvas from "html2canvas"; // Add this import
 import {
     Square,
     Type,
@@ -29,21 +30,23 @@ interface ResizeHandle {
 
 type Tool = "select" | "box" | "text";
 
-interface CanvasPaneProps {
-    onCanvasCapture?: (dataUrl: string, description: string) => void;
+export interface CanvasPaneProps {
+    onCanvasCapture?: (dataUrl: string, description?: string) => void;
     showPreview?: boolean;
     previewContent?: React.ReactNode;
+    canvasRef?: React.RefObject<HTMLCanvasElement>; // Added canvasRef as an optional prop
 }
 
 const CanvasPane: React.FC<CanvasPaneProps> = ({
     onCanvasCapture,
     showPreview = false,
     previewContent,
+    canvasRef, // Accept canvasRef prop
 }) => {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const localCanvasRef = useRef<HTMLCanvasElement>(null);
     const previewRef = useRef<HTMLDivElement>(null);
-    const containerRef = useRef<HTMLDivElement>(null); // Ref for the parent container
-    const toolbarRef = useRef<HTMLDivElement>(null); // Ref for the toolbar
+    const containerRef = useRef<HTMLDivElement>(null);
+    const toolbarRef = useRef<HTMLDivElement>(null);
     const [elements, setElements] = useState<CanvasElement[]>([]);
     const [selectedTool, setSelectedTool] = useState<Tool>("select");
     const [isDrawing, setIsDrawing] = useState(false);
@@ -56,8 +59,8 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
     const [editingText, setEditingText] = useState<string | null>(null);
     const [textInput, setTextInput] = useState("");
     const [canvasEnabled, setCanvasEnabled] = useState(true);
-    const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 }); // Dynamic size state
-    const [toolbarHeight, setToolbarHeight] = useState(0); // State to store toolbar height
+    const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+    const [toolbarHeight, setToolbarHeight] = useState(0);
 
     useEffect(() => {
         const container = containerRef.current;
@@ -67,18 +70,16 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
         const resizeObserver = new ResizeObserver((entries) => {
             for (let entry of entries) {
                 const { width, height } = entry.contentRect;
-                setToolbarHeight(toolbar.offsetHeight); // Update toolbar height
-                const availableHeight = height - toolbarHeight; // Subtract toolbar height
+                setToolbarHeight(toolbar.offsetHeight);
+                const availableHeight = height - toolbarHeight;
                 setCanvasSize({
                     width,
-                    height: Math.max(0, availableHeight), // Ensure height doesn't go negative
+                    height: Math.max(0, availableHeight),
                 });
             }
         });
 
         resizeObserver.observe(container);
-
-        // Initial size
         setToolbarHeight(toolbar.offsetHeight);
         const initialHeight = container.clientHeight - toolbarHeight;
         setCanvasSize({
@@ -94,23 +95,19 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
     }, [elements, selectedElement, canvasSize]);
 
     const redrawCanvas = () => {
-        const canvas = canvasRef.current;
+        const canvas = canvasRef?.current || localCanvasRef.current;
         if (!canvas) return;
 
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
-        // Set canvas dimensions
         canvas.width = canvasSize.width;
-        canvas.height = canvasSize.height;
+        canvas.height = canvasSize.height - 70;
 
-        // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Set global alpha for overlay mode
         ctx.globalAlpha = showPreview ? 0.9 : 1.0;
 
-        // Draw elements
         elements.forEach((element) => {
             ctx.strokeStyle = showPreview ? element.color : element.color;
             ctx.fillStyle = showPreview ? element.color + "60" : element.color + "20";
@@ -131,7 +128,6 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
                 );
             }
 
-            // Draw text
             if (element.text) {
                 ctx.fillStyle = showPreview ? element.color : element.color;
                 ctx.font = "14px Inter, sans-serif";
@@ -247,7 +243,7 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
     };
 
     const getMousePos = (e: React.MouseEvent<HTMLCanvasElement>) => {
-        const canvas = canvasRef.current;
+        const canvas = canvasRef?.current || localCanvasRef.current;
         if (!canvas) return { x: 0, y: 0 };
 
         const rect = canvas.getBoundingClientRect();
@@ -334,7 +330,7 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
         if (!canvasEnabled) return;
 
         const { x, y } = getMousePos(e);
-        const canvas = canvasRef.current;
+        const canvas = canvasRef?.current || localCanvasRef.current;
         if (!canvas) return;
 
         if (isResizing && selectedElement && resizeHandle) {
@@ -511,16 +507,44 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
 
     const clearCanvas = () => {
         setElements([]);
-        setSelectedElement(null); 
+        setSelectedElement(null);
     };
 
-    const captureCanvas = () => {
-        const canvas = canvasRef.current;
-        if (!canvas || !onCanvasCapture) return;
+    const captureCanvas = async () => {
+        const canvas = canvasRef?.current || localCanvasRef.current;
+        const preview = previewRef.current;
+        if (!canvas || !preview || !onCanvasCapture) return;
 
-        const dataUrl = canvas.toDataURL("image/png");
-        const description = generateCanvasDescription();
-        onCanvasCapture(dataUrl, description);
+        // Create an off-screen canvas
+        const offscreenCanvas = document.createElement("canvas");
+        offscreenCanvas.width = canvas.width;
+        offscreenCanvas.height = canvas.height;
+        const ctx = offscreenCanvas.getContext("2d");
+        if (!ctx) return;
+
+        // Capture the preview content as an image
+        const previewImage = await html2canvas(preview, {
+            backgroundColor: null, // Preserve transparency
+            useCORS: true, // If preview includes external content
+        });
+
+        // Draw the preview image onto the off-screen canvas
+        ctx.drawImage(previewImage, 0, 0, canvas.width, canvas.height);
+
+        // Redraw canvas elements onto the off-screen canvas
+        const tempCanvas = document.createElement("canvas");
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = canvas.height;
+        const tempCtx = tempCanvas.getContext("2d");
+        if (tempCtx) {
+            tempCtx.drawImage(canvas, 0, 0); // Copy the original canvas content
+            ctx.drawImage(tempCanvas, 0, 0); // Overlay canvas elements
+        }
+
+        // Generate the combined data URL
+        const dataUrl = offscreenCanvas.toDataURL("image/png");
+        onCanvasCapture(dataUrl, generateCanvasDescription()); // Pass dataUrl and description
+        console.log("Canvas Captured:", dataUrl); // Debug log
     };
 
     const generateCanvasDescription = (): string => {
@@ -539,10 +563,9 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
 
     return (
         <div
-            ref={containerRef} // Attach ref to the parent div
+            ref={containerRef}
             className="h-full bg-gray-950 flex flex-col"
         >
-            {/* Toolbar */}
             <div ref={toolbarRef} className="border-b border-gray-800 p-4 flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                     <button
@@ -612,14 +635,12 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
                 </div>
             </div>
 
-            {/* Canvas and Preview Container */}
             <div className="flex-1 relative">
                 {showPreview && (
                     <div className="absolute inset-0 flex flex-col">
-                        {/* Canvas Layer */}
                         <div className="relative z-100 bg-none">
                             <canvas
-                                ref={canvasRef}
+                                ref={canvasRef || localCanvasRef} // Use provided ref or fall back to local
                                 width={canvasSize.width}
                                 height={canvasSize.height}
                                 className="absolute inset-0 cursor-crosshair bg-none"
@@ -629,8 +650,6 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
                                 onDoubleClick={handleDoubleClick}
                             />
                         </div>
-
-                        {/* Preview Layer */}
                         <div className="flex-1 top-0 z-0">
                             <div
                                 ref={previewRef}
@@ -645,7 +664,7 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
 
                 {!showPreview && (
                     <canvas
-                        ref={canvasRef}
+                        ref={canvasRef || localCanvasRef} // Use provided ref or fall back to local
                         width={canvasSize.width}
                         height={canvasSize.height}
                         className="absolute inset-0 cursor-crosshair bg-gray-900"
@@ -656,7 +675,6 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
                     />
                 )}
 
-                {/* Text Editing Modal */}
                 {editingText && (
                     <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20">
                         <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
@@ -692,7 +710,6 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
                 )}
             </div>
 
-            {/* Element List */}
             {elements.length > 0 && !showPreview && (
                 <div className="border-t border-gray-800 p-4 max-h-40 overflow-y-auto">
                     <h3 className="text-sm font-medium text-gray-300 mb-2">
@@ -743,7 +760,6 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
                 </div>
             )}
 
-            {/* Instructions */}
             {!showPreview && (
                 <div className="border-t border-gray-800 p-3 bg-gray-900">
                     <div className="text-xs text-gray-500 space-y-1">

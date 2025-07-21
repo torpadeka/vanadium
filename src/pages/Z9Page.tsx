@@ -183,6 +183,7 @@ const Z9Page: React.FC = () => {
                     const folders = foldersResult.ok;
 
                     const tree = buildFileTree(files, folders);
+                    console.log("Built fileTree for chat", chatId, ":", tree);
                     setFileTree(tree);
 
                     if (webContainer) {
@@ -6516,6 +6517,7 @@ export function useIsMobile() {
 
             await loadChats();
             setCurrentChat(chatId.toString());
+            await loadProjectFiles(chatId); // Add this to load the file tree immediately
         } catch (error) {
             console.error("Failed to create new project:", error);
         } finally {
@@ -6658,11 +6660,14 @@ export function useIsMobile() {
 
     const captureCanvasScreenshot = () => {
         const canvas = canvasRef.current;
+        console.log("Canvas Ref:", canvas); // Debug log
         if (canvas) {
             const screenshot = canvas.toDataURL("image/png");
             setCanvasScreenshot(screenshot);
+            console.log("Captured Canvas Data:", screenshot); // Debug log
             return screenshot;
         }
+        console.warn("Canvas not available for capture");
         return null;
     };
 
@@ -6971,7 +6976,8 @@ export function useIsMobile() {
 
             let canvasData = null;
             if (includeCanvas && activeTab === "canvas") {
-                canvasData = captureCanvasScreenshot();
+                canvasData = captureCanvasScreenshot(); // Get the full data URL
+                console.log("Canvas Data Sent:", canvasData);
             }
 
             await chatHandler.current.createMessage(
@@ -6990,7 +6996,7 @@ export function useIsMobile() {
 
             const aiResponse = await aiService.sendMessage(
                 input,
-                canvasData ? generateCanvasDescription() : undefined,
+                canvasData, // Pass the full canvas data URL directly
                 fileTree
             );
 
@@ -7096,7 +7102,6 @@ export function useIsMobile() {
             setIsLoading(false);
         }
     };
-
     const handleCodeProject = async (
         project: AIResponse["codeProject"],
         chatId: number
@@ -7210,12 +7215,6 @@ export function useIsMobile() {
         }
 
         await loadProjectFiles(chatId); // Force reload if supported
-    };
-
-    const generateCanvasDescription = (): string => {
-        if (fileTree.length === 0) return "Empty canvas";
-
-        return "Canvas with user-drawn elements for UI mockup";
     };
 
     const formatTimestamp = (timestamp: bigint) => {
@@ -7549,11 +7548,13 @@ export function useIsMobile() {
                             </h3>
                         </div>
                         <div className="overflow-y-auto">
-                            {fileTree.length > 0 ? (
+                            {fileTreeReady && fileTree.length > 0 ? (
                                 renderFileTree(fileTree)
                             ) : (
                                 <div className="p-4 text-sm text-gray-500 text-center">
-                                    No files yet
+                                    {fileTreeReady
+                                        ? "No files yet"
+                                        : "Loading files..."}
                                 </div>
                             )}
                         </div>

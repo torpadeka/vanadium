@@ -23,7 +23,7 @@ export interface AIResponse {
 
 export class AIService {
     private readonly endpoint = "/api/openai"; // Updated to use proxy
-    private readonly systemPrompt = systemPrompt;   
+    private readonly systemPrompt = systemPrompt;
 
     private getSystemPrompt(fileTree?: FileNode[]): string {
         let prompt = this.systemPrompt;
@@ -60,7 +60,7 @@ export class AIService {
 
     async sendMessage(
         userMessage: string,
-        canvasData?: string,
+        canvasData?: string | null,
         fileTree?: FileNode[]
     ): Promise<AIResponse> {
         try {
@@ -72,7 +72,9 @@ export class AIService {
                 {
                     role: "user",
                     content: canvasData
-                        ? `${userMessage}\n\nCanvas context: ${canvasData}`
+                        ? JSON.stringify({
+                              "data:image/png;base64": canvasData.split(",")[1] // Extract base64 part
+                          }) + `\nUser prompt: ${userMessage}`
                         : userMessage,
                 },
             ];

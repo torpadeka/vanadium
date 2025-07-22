@@ -638,26 +638,26 @@ const CanvasPane: React.FC<CanvasPaneProps> = ({
             <div className="flex-1 relative">
                 {showPreview && (
                     <div className="absolute inset-0 flex flex-col">
-                        <div className="relative z-100 bg-none">
+                        <div className="relative z-10 bg-none pointer-events-auto">
                             <canvas
                                 ref={canvasRef || localCanvasRef} // Use provided ref or fall back to local
                                 width={canvasSize.width}
                                 height={canvasSize.height}
-                                className="absolute inset-0 cursor-crosshair bg-none"
+                                className="absolute inset-0 cursor-crosshair bg-transparent"
+                                style={{ opacity: canvasEnabled ? 0.9 : 0.3 }}
                                 onMouseDown={handleMouseDown}
                                 onMouseMove={handleMouseMove}
                                 onMouseUp={handleMouseUp}
                                 onDoubleClick={handleDoubleClick}
                             />
                         </div>
-                        <div className="flex-1 top-0 z-0">
+                        <div className="absolute inset-0 z-0 pointer-events-none">
                             <div
                                 ref={previewRef}
-                                className="absolute inset-0 bg-white"
+                                className="w-full h-full bg-white"
                             >
                                 {previewContent}
                             </div>
-                            <div className="absolute inset-0 bg-transparent cursor-not-allowed z-10" />
                         </div>
                     </div>
                 )}

@@ -11,23 +11,23 @@ import Types "./Types";
 actor ChatSystemActor {
   // State for Chats
   let chats = HashMap.HashMap<Nat32, Types.Chat>(0, Nat32.equal, func(x : Nat32) : Nat32 { x });
-  var nextChatId : Nat32 = 2;
+  var nextChatId : Nat32 = 1;
 
   // State for Files
   let files = HashMap.HashMap<Nat32, Types.File>(0, Nat32.equal, func(x : Nat32) : Nat32 { x });
-  var nextFileId : Nat32 = 2;
+  var nextFileId : Nat32 = 1;
 
   // State for Folders
   let folders = HashMap.HashMap<Nat32, Types.Folder>(0, Nat32.equal, func(x : Nat32) : Nat32 { x });
-  var nextFolderId : Nat32 = 2;
+  var nextFolderId : Nat32 = 1;
 
   // State for Messages
   let messages = HashMap.HashMap<Nat32, Types.Message>(0, Nat32.equal, func(x : Nat32) : Nat32 { x });
-  var nextMessageId : Nat32 = 2;
+  var nextMessageId : Nat32 = 1;
 
   // State for Project Versions
   let projectVersions = HashMap.HashMap<Nat32, Types.ProjectVersion>(0, Nat32.equal, func(x : Nat32) : Nat32 { x });
-  var nextProjectVersionId : Nat32 = 2;
+  var nextProjectVersionId : Nat32 = 1;
 
   // Chat Functions
   public shared func createChat(userId : Principal, title : ?Text) : async Result.Result<Types.Chat, Text> {

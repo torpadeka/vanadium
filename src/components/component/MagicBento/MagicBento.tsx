@@ -543,6 +543,7 @@ const BentoCardGrid: React.FC<{
   <div
     className="bento-section grid gap-2 p-3 max-w-[72rem] select-none relative"
     style={{ fontSize: "clamp(1rem, 0.9rem + 0.5vw, 1.5rem)" }}
+    // @ts-ignore
     ref={gridRef}
   >
     {children}

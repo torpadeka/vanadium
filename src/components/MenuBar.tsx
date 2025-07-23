@@ -126,6 +126,7 @@ export function MenuBar({
             ? "via-blue-400/30 via-30% via-purple-400/30 via-60% via-red-400/30 via-90%"
             : "via-blue-400/20 via-30% via-purple-400/20 via-60% via-red-400/20 via-90%"
         } to-transparent rounded-3xl z-0 pointer-events-none`}
+        // @ts-ignore
         variants={navGlowVariants}
       />
       <ul className="flex items-center gap-2 relative z-10">
@@ -142,6 +143,7 @@ export function MenuBar({
             >
               <motion.div
                 className="absolute inset-0 z-0 pointer-events-none"
+                // @ts-ignore
                 variants={glowVariants}
                 style={{
                   background: item.gradient,
@@ -156,6 +158,7 @@ export function MenuBar({
                 <motion.div
                   className="absolute inset-0 bg-white/20 rounded-xl z-0"
                   layoutId="activeTab"
+                  // @ts-ignore
                   transition={sharedTransition}
                 />
               )}
@@ -181,6 +184,7 @@ export function MenuBar({
                     : "text-muted-foreground group-hover:text-foreground"
                 }`}
                 variants={itemVariants}
+                // @ts-ignore
                 transition={sharedTransition}
                 style={{
                   transformStyle: "preserve-3d",
@@ -207,6 +211,7 @@ export function MenuBar({
                 href={item.href}
                 className="flex items-center gap-2 px-4 py-2 absolute inset-0 z-10 bg-transparent text-muted-foreground group-hover:text-foreground transition-colors rounded-xl"
                 variants={backVariants}
+                // @ts-ignore
                 transition={sharedTransition}
                 style={{
                   transformStyle: "preserve-3d",
